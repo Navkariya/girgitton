@@ -27,6 +27,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Windows konsoli UTF-8 emojilarni ko'rsatishi uchun
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from aiohttp import web
 from telethon import TelegramClient, events
 
