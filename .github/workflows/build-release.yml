@@ -5,23 +5,21 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            name: Windows
             artifact: Girgitton_Windows.exe
-            exe_path: dist/Girgitton.exe
           - os: macos-latest
-            name: macOS
             artifact: Girgitton_macOS.zip
-            exe_path: dist/Girgitton_macOS.zip
           - os: ubuntu-latest
-            name: Linux
             artifact: Girgitton_Linux.bin
-            exe_path: dist/Girgitton
 
     runs-on: ${{ matrix.os }}
 
@@ -40,18 +38,16 @@ jobs:
         run: pyinstaller build/girgitton.spec
 
       - name: Rename (Windows)
-        if: matrix.os == 'windows-latest'
-        run: mv dist/Girgitton.exe dist/Girgitton_Windows.exe
+        if: runner.os == 'Windows'
         shell: bash
+        run: mv dist/Girgitton.exe dist/Girgitton_Windows.exe
 
       - name: Package (macOS)
-        if: matrix.os == 'macos-latest'
-        run: |
-          cd dist
-          zip -r Girgitton_macOS.zip Girgitton.app
+        if: runner.os == 'macOS'
+        run: cd dist && zip -r Girgitton_macOS.zip Girgitton.app
 
       - name: Rename (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: mv dist/Girgitton dist/Girgitton_Linux.bin
 
       - name: Upload to GitHub Releases
