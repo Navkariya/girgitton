@@ -82,7 +82,7 @@ HELP_TEXT = """
 • `/allowed`       — ruxsatli foydalanuvchilar ro'yxati
 """.strip()
 
-GITHUB_REPO = os.getenv("GITHUB_REPO", "USER/girgitton")
+GITHUB_REPO = os.getenv("GITHUB_REPO", "Navkariya/girgitton")
 
 
 @client.on(events.NewMessage(pattern=r"^/start(@\w+)?$"))
