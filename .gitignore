@@ -22,10 +22,10 @@ __pycache__/
 # Girgitton lokal config
 .girgitton_config.json
 
-# PyInstaller build
-build/
+# PyInstaller build output
 dist/
-*.spec
+build/*.exe
+build/*.app
 
 # IDE
 .vscode/
