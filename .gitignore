@@ -1,0 +1,36 @@
+# Maxfiy ma'lumotlar — HECH QACHON commit qilinmasin
+.env
+
+# Telegram session fayli
+*.session
+*.session-journal
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Log fayllar
+*.log
+
+# Girgitton lokal config
+.girgitton_config.json
+
+# PyInstaller build
+build/
+dist/
+*.spec
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,61 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            artifact: Girgitton_Windows.exe
+            exe_path: dist/Girgitton.exe
+          - os: macos-latest
+            name: macOS
+            artifact: Girgitton_macOS.zip
+            exe_path: dist/Girgitton_macOS.zip
+          - os: ubuntu-latest
+            name: Linux
+            artifact: Girgitton_Linux.bin
+            exe_path: dist/Girgitton
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements-app.txt pyinstaller
+
+      - name: Build executable
+        run: pyinstaller build/girgitton.spec
+
+      - name: Rename (Windows)
+        if: matrix.os == 'windows-latest'
+        run: mv dist/Girgitton.exe dist/Girgitton_Windows.exe
+        shell: bash
+
+      - name: Package (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd dist
+          zip -r Girgitton_macOS.zip Girgitton.app
+
+      - name: Rename (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: mv dist/Girgitton dist/Girgitton_Linux.bin
+
+      - name: Upload to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/${{ matrix.artifact }}
+          generate_release_notes: true
