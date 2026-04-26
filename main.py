@@ -68,18 +68,21 @@ async def _is_allowed(sender_id: Optional[int]) -> bool:
 # Bot buyruqlari
 # ---------------------------------------------------------------------------
 HELP_TEXT = """
-🦎 **Girgitton v2** — Desktop Upload App
+🦎 **Girgitton v2.1** — Desktop Upload App
 
 **Ishlatish tartibi:**
 1. `/download` — App ni yuklab oling
-2. `/setup` — Config fayl oling (1 marta)
-3. App ni oching → config ni import qiling → yuborishni boshlang
+2. Guruhda `/pair` yuboring (Guruhni faollashtirish)
+3. App ni oching (avtomatik ulanadi yoki kodni kiriting)
+4. Yuborishni boshlang
 
 **Buyruqlar:**
 • `/start`         — ushbu yordam
 • `/download`      — Desktop App yuklab olish
-• `/setup`         — config fayl yaratish (30 daqiqa amal qiladi)
-• `/status`        — App holati (yuborish davom etayotganmi)
+• `/pair`          — Guruhni faollashtirish va ulanish kodi (guruhda)
+• `/unpair`        — Guruhni faol ro'yxatdan o'chirish (guruhda)
+• `/groups`        — Faol guruhlar ro'yxati
+• `/status`        — App holati
 • `/stop`          — App ga to'xtatish signali yuborish
 • `/allow <ID>`    — foydalanuvchiga ruxsat (faqat egasi)
 • `/disallow <ID>` — ruxsatni olib tashlash (faqat egasi)
@@ -108,43 +111,74 @@ async def cmd_download(event: events.NewMessage.Event) -> None:
     )
 
 
-@client.on(events.NewMessage(pattern=r"^/setup(@\w+)?$"))
-async def cmd_setup(event: events.NewMessage.Event) -> None:
+def _generate_pair_code() -> str:
+    import random
+    import string
+    return "".join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+
+@client.on(events.NewMessage(pattern=r"^/pair(@\w+)?$"))
+async def cmd_pair(event: events.NewMessage.Event) -> None:
     if not await _is_allowed(event.sender_id):
         await event.reply("⛔ Ruxsat yo'q.")
         return
 
-    token = secrets.token_urlsafe(32)
-    await storage.save_setup_token(token, ttl=1800)
+    if event.is_private:
+        await event.reply("Bu buyruq faqat guruhda ishlaydi!")
+        return
+
+    chat = await event.get_chat()
+    await storage.add_active_group(event.chat_id, chat.title)
+
+    code = _generate_pair_code()
+    await storage.save_pair_code(code, {
+        "group_id": event.chat_id,
+        "group_title": chat.title,
+        "user_id": event.sender_id,
+    }, ttl=300)
 
     domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-    api_url = f"https://{domain}" if domain else ""
+    server = f"https://{domain}" if domain else "http://localhost:8080"
+    deep_link = f"girgitton://connect?code={code}&server={server}"
 
-    config_data = {
-        "bot_token": config.BOT_TOKEN,
-        "api_id": config.API_ID,
-        "api_hash": config.API_HASH,
-        "api_url": api_url,
-        "api_secret": os.getenv("API_SECRET", ""),
-        "group_id": event.chat_id,
-        "setup_token": token,
-    }
+    await event.reply(
+        f"✅ Guruh faollashdi: {chat.title}\n\n"
+        f"🔑 Pair Code: **{code}**\n"
+        f"⏳ Kod 5 daqiqa amal qiladi.\n\n"
+        f"Desktop App oching — lokal avtomatik ulanadi.\n"
+        f"Yoki shu linkni bosing: {deep_link}",
+        parse_mode="md",
+    )
 
-    tmp = Path(f"/tmp/girgitton_{token[:8]}.json")
-    tmp.write_text(json.dumps(config_data, indent=2), encoding="utf-8")
 
-    try:
-        await event.reply(
-            "📎 **Config fayl** — BIR MARTALIK, 30 daqiqa\n\n"
-            "1. Faylni yuklab oling\n"
-            "2. Girgitton app → **Import config**\n"
-            "3. Ismingizni kiriting → boshlang\n\n"
-            "⚠️ Bu fayl faqat bir marta ishlatiladi.",
-            file=str(tmp),
-            parse_mode="md",
-        )
-    finally:
-        tmp.unlink(missing_ok=True)
+@client.on(events.NewMessage(pattern=r"^/unpair(@\w+)?$"))
+async def cmd_unpair(event: events.NewMessage.Event) -> None:
+    if not await _is_allowed(event.sender_id):
+        await event.reply("⛔ Ruxsat yo'q.")
+        return
+        
+    if event.is_private:
+        await event.reply("Bu buyruq faqat guruhda ishlaydi!")
+        return
+        
+    await storage.remove_active_group(event.chat_id)
+    await event.reply("❌ Guruh faol ro'yxatdan o'chirildi.")
+
+
+@client.on(events.NewMessage(pattern=r"^/groups(@\w+)?$"))
+async def cmd_groups(event: events.NewMessage.Event) -> None:
+    if not await _is_allowed(event.sender_id):
+        await event.reply("⛔ Ruxsat yo'q.")
+        return
+        
+    groups = await storage.get_active_groups()
+    if not groups:
+        await event.reply("ℹ️ Hozircha faol guruhlar yo'q.\nGuruhga botni qo'shib, `/pair` buyrug'ini yuboring.")
+        return
+        
+    lines = [f"• {g['title']} (`{g['id']}`)" for g in groups]
+    await event.reply("🎯 **Faol guruhlar:**\n\n" + "\n".join(lines), parse_mode="md")
+
 
 
 @client.on(events.NewMessage(pattern=r"^/status(@\w+)?$"))
@@ -154,8 +188,8 @@ async def cmd_status(event: events.NewMessage.Event) -> None:
         return
 
     state = (
-        get_app_state(event.sender_id, event.chat_id)
-        or await storage.load_app_status(event.sender_id, event.chat_id)
+        get_app_state(event.sender_id)
+        or await storage.load_app_status(event.sender_id, 0)
     )
 
     if not state:
@@ -188,7 +222,7 @@ async def cmd_stop(event: events.NewMessage.Event) -> None:
         await event.reply("⛔ Ruxsat yo'q.")
         return
 
-    set_stop_command(event.sender_id, event.chat_id)
+    set_stop_command(event.sender_id)
     await event.reply(
         "🛑 **Stop signali yuborildi**\n\n"
         "App keyingi tekshiruvda (≤5s) to'xtaydi.\n"
@@ -253,11 +287,17 @@ async def main() -> None:
     await web.TCPSite(runner, "0.0.0.0", port).start()
     logger.info("API server ishga tushdi: port=%d", port)
 
-    print(f"\n✅ Girgitton v2 ishga tushdi!")
-    print(f"   Bot    : {me.first_name} (@{me.username})")
-    print(f"   API    : http://0.0.0.0:{port}/health")
-    print(f"   Storage: {'Redis' if os.getenv('REDIS_URL') else 'JSON fayl'}")
-    print("\nTo'xtatish uchun Ctrl+C.\n")
+    def _safe_print(msg: str) -> None:
+        try:
+            print(msg)
+        except UnicodeEncodeError:
+            print(msg.encode("ascii", errors="replace").decode())
+
+    _safe_print(f"\n✅ Girgitton v2 ishga tushdi!")
+    _safe_print(f"   Bot    : {me.first_name} (@{me.username})")
+    _safe_print(f"   API    : http://0.0.0.0:{port}/health")
+    _safe_print(f"   Storage: {'Redis' if os.getenv('REDIS_URL') else 'JSON fayl'}")
+    _safe_print("\nTo'xtatish uchun Ctrl+C.\n")
 
     try:
         await client.run_until_disconnected()

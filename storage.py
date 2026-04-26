@@ -106,19 +106,44 @@ async def load_allowed_users() -> set[int]:
     return _json_load_allowed()
 
 
-# ── Setup tokens ───────────────────────────────────────────────────────────
+# ── Pair Code ──────────────────────────────────────────────────────────────
 
-async def save_setup_token(token: str, ttl: int = 1800) -> None:
+async def save_pair_code(code: str, data: dict, ttl: int = 300) -> None:
     if _redis:
-        await _redis.setex(f"setup_token:{token}", ttl, "valid")
+        await _redis.setex(f"pair_code:{code}", ttl, json.dumps(data))
+    else:
+        _json_save_pair_code(code, data, ttl)
 
 
-async def consume_setup_token(token: str) -> bool:
-    """Tokenni bir marta o'qib o'chiradi. Lokal rejimda har doim True."""
+async def consume_pair_code(code: str) -> Optional[dict]:
+    """Kod ishlatilgach uni o'chirib yuboradi."""
     if _redis:
-        result = await _redis.getdel(f"setup_token:{token}")
-        return result is not None
-    return True  # lokal test: token tekshiruvi yo'q
+        raw = await _redis.getdel(f"pair_code:{code}")
+        return json.loads(raw) if raw else None
+    return _json_consume_pair_code(code)
+
+
+# ── Active Groups ──────────────────────────────────────────────────────────
+
+async def add_active_group(group_id: int, title: str) -> None:
+    if _redis:
+        await _redis.hset("active_groups", str(group_id), title)
+    else:
+        _json_add_active_group(group_id, title)
+
+
+async def remove_active_group(group_id: int) -> None:
+    if _redis:
+        await _redis.hdel("active_groups", str(group_id))
+    else:
+        _json_remove_active_group(group_id)
+
+
+async def get_active_groups() -> list[dict]:
+    if _redis:
+        groups = await _redis.hgetall("active_groups")
+        return [{"id": int(gid), "title": title} for gid, title in groups.items()]
+    return _json_get_active_groups()
 
 
 # ── App status ─────────────────────────────────────────────────────────────
@@ -202,3 +227,39 @@ def _json_remove_allowed(user_id: int) -> None:
 
 def _json_load_allowed() -> set[int]:
     return set(_json_read().get("allowed_users", []))
+
+
+def _json_save_pair_code(code: str, data: dict, ttl: int) -> None:
+    json_data = _json_read()
+    json_data.setdefault("pair_codes", {})[code] = data
+    _json_write(json_data)
+
+
+def _json_consume_pair_code(code: str) -> Optional[dict]:
+    json_data = _json_read()
+    codes = json_data.get("pair_codes", {})
+    if code in codes:
+        data = codes.pop(code)
+        _json_write(json_data)
+        return data
+    return None
+
+
+def _json_add_active_group(group_id: int, title: str) -> None:
+    json_data = _json_read()
+    json_data.setdefault("active_groups", {})[str(group_id)] = title
+    _json_write(json_data)
+
+
+def _json_remove_active_group(group_id: int) -> None:
+    json_data = _json_read()
+    if str(group_id) in json_data.get("active_groups", {}):
+        del json_data["active_groups"][str(group_id)]
+        _json_write(json_data)
+
+
+def _json_get_active_groups() -> list[dict]:
+    json_data = _json_read()
+    groups = json_data.get("active_groups", {})
+    return [{"id": int(gid), "title": title} for gid, title in groups.items()]
+

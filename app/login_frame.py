@@ -1,19 +1,19 @@
 """
-LoginFrame — config import oynasi.
+LoginFrame — Xavfsiz ulanish oynasi (v2.1).
 
 Foydalanuvchi:
-  1. "Config import" → fayl tanlaydi (bot /setup faylini)
-  2. Ismini kiritadi
-  3. "Boshlash" → API /connect → MainFrame ga o'tadi
+  1. "Lokal Avtomatik ulanish" tugmasini bosadi yoki
+  2. Pair kodni kiritib ulanadi
+  3. Muvaffaqiyatli ulansa, credentials saqlanib MainFrame ga o'tadi
 """
 
 import logging
-import tkinter.filedialog as fd
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import customtkinter as ctk
 
 from app import app_config
+from app import api_client
 
 if TYPE_CHECKING:
     from app.gui import App
@@ -25,140 +25,142 @@ class LoginFrame(ctk.CTkFrame):
     def __init__(self, parent: ctk.CTkFrame, app: "App") -> None:
         super().__init__(parent, fg_color="transparent")
         self._app = app
-        self._cfg: dict | None = None
         self._build_ui()
+        self._check_deep_link()
+
+    def _check_deep_link(self) -> None:
+        url = getattr(self._app, "_deep_link_url", None)
+        if not url:
+            return
+        
+        # girgitton://connect?code=ABC123&server=http://localhost:8080
+        from urllib.parse import urlparse, parse_qs
+        try:
+            parsed = urlparse(url)
+            qs = parse_qs(parsed.query)
+            if "code" in qs:
+                self._code_entry.insert(0, qs["code"][0])
+            if "server" in qs:
+                # server ni _app ga saqlab qo'yamiz yoki button bosilganda ishlatamiz
+                self._app._deep_link_server = qs["server"][0]
+        except Exception as exc:
+            logger.warning("Deep link parse xatosi: %s", exc)
 
     def _build_ui(self) -> None:
         # Sarlavha
         ctk.CTkLabel(
             self,
-            text="🦎 Girgitton v2",
+            text="🦎 Girgitton v2.1",
             font=ctk.CTkFont(size=28, weight="bold"),
         ).pack(pady=(30, 5))
 
         ctk.CTkLabel(
             self,
-            text="Desktop Upload App",
+            text="Secure Pairing",
             font=ctk.CTkFont(size=14),
             text_color="gray",
         ).pack(pady=(0, 30))
 
-        # Config import
-        cfg_frame = ctk.CTkFrame(self)
-        cfg_frame.pack(fill="x", pady=8)
-
-        ctk.CTkLabel(cfg_frame, text="Config fayl:", anchor="w").pack(
-            fill="x", padx=15, pady=(12, 0)
+        # Auto connect qismi
+        auto_frame = ctk.CTkFrame(self)
+        auto_frame.pack(fill="x", pady=8, padx=15)
+        
+        ctk.CTkLabel(auto_frame, text="Lokal ulanish (faqat bitta kompyuterda bo'lsa):").pack(pady=(12, 5))
+        
+        self._auto_btn = ctk.CTkButton(
+            auto_frame,
+            text="🔄 Avtomatik ulanish",
+            command=self._on_auto_pair,
         )
+        self._auto_btn.pack(pady=(5, 15), ipadx=10)
 
-        row = ctk.CTkFrame(cfg_frame, fg_color="transparent")
-        row.pack(fill="x", padx=15, pady=(4, 12))
+        # Pair code qismi
+        code_frame = ctk.CTkFrame(self)
+        code_frame.pack(fill="x", pady=8, padx=15)
 
-        self._cfg_path_var = ctk.StringVar(value="Fayl tanlanmagan")
-        ctk.CTkLabel(row, textvariable=self._cfg_path_var, anchor="w", text_color="gray").pack(
-            side="left", expand=True, fill="x"
+        ctk.CTkLabel(code_frame, text="Yoki Telegram guruhdan olingan 6 xonali kod:").pack(pady=(12, 5))
+        
+        self._code_entry = ctk.CTkEntry(
+            code_frame, 
+            placeholder_text="Masalan: ABC123", 
+            justify="center",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            height=40
         )
-        ctk.CTkButton(row, text="📂 Tanlash", width=100, command=self._pick_config).pack(
-            side="right"
-        )
+        self._code_entry.pack(pady=5, padx=20, fill="x")
 
-        # Ism
-        name_frame = ctk.CTkFrame(self)
-        name_frame.pack(fill="x", pady=8)
-
-        ctk.CTkLabel(name_frame, text="Ismingiz (caption uchun):", anchor="w").pack(
-            fill="x", padx=15, pady=(12, 0)
+        self._pair_btn = ctk.CTkButton(
+            code_frame,
+            text="✅ Kodni tasdiqlash",
+            command=self._on_pair_code,
         )
-        self._name_entry = ctk.CTkEntry(
-            name_frame, placeholder_text="Ism kiriting...", height=38
-        )
-        self._name_entry.pack(fill="x", padx=15, pady=(4, 12))
+        self._pair_btn.pack(pady=(5, 15), ipadx=10)
 
         # Status
         self._status_label = ctk.CTkLabel(
             self, text="", text_color="#e74c3c", wraplength=480
         )
-        self._status_label.pack(pady=8)
+        self._status_label.pack(pady=15)
 
-        # Boshlash tugmasi
-        self._start_btn = ctk.CTkButton(
-            self,
-            text="▶️  Boshlash",
-            height=44,
-            font=ctk.CTkFont(size=15, weight="bold"),
-            command=self._on_start,
-            state="disabled",
-        )
-        self._start_btn.pack(pady=16, ipadx=20)
+    def _set_status(self, text: str, is_error: bool = True) -> None:
+        color = "#e74c3c" if is_error else "gray"
+        self._status_label.configure(text=text, text_color=color)
 
-        ctk.CTkLabel(
-            self,
-            text="Avval Telegram botga /setup yuboring va config faylni yuklab oling.",
-            text_color="gray",
-            font=ctk.CTkFont(size=11),
-            wraplength=460,
-        ).pack(pady=(20, 0))
-
-    def _pick_config(self) -> None:
-        path = fd.askopenfilename(
-            title="Girgitton config faylini tanlang",
-            filetypes=[("JSON fayl", "*.json"), ("Barcha fayllar", "*.*")],
-        )
-        if not path:
-            return
+    def _save_and_proceed(self, data: dict[str, Any]) -> None:
         try:
-            self._cfg = app_config.import_from_file(path)
-            short = path.split("/")[-1] if "/" in path else path.split("\\")[-1]
-            self._cfg_path_var.set(f"✅ {short}")
-            self._status_label.configure(text="", text_color="#e74c3c")
-            self._start_btn.configure(state="normal")
-        except Exception as exc:
-            self._cfg = None
-            self._cfg_path_var.set("Fayl tanlanmagan")
-            self._status_label.configure(text=f"⚠️ Fayl xatolik: {exc}")
-            self._start_btn.configure(state="disabled")
-
-    def _on_start(self) -> None:
-        if not self._cfg:
-            self._status_label.configure(text="⚠️ Avval config faylni tanlang.")
-            return
-        name = self._name_entry.get().strip()
-        if not name:
-            self._status_label.configure(text="⚠️ Ismingizni kiriting.")
-            return
-
-        app_config.set_display_name(name)
-        self._status_label.configure(text="🔗 Ulanyapti...", text_color="gray")
-        self._start_btn.configure(state="disabled")
-
-        api_url = self._cfg.get("api_url", "")
-        api_secret = self._cfg.get("api_secret", "")
-        setup_token = self._cfg.get("setup_token", "")
-
-        if api_url and setup_token:
-            self._app.run_async(
-                self._do_connect(api_url, api_secret, setup_token)
-            )
-        else:
-            self._app.show_main()
-
-    async def _do_connect(self, api_url: str, api_secret: str, setup_token: str) -> None:
-        from app.api_client import APIClient
-
-        client = APIClient(
-            api_url=api_url,
-            api_secret=api_secret,
-            user_id=0,
-            chat_id=int(self._cfg.get("group_id", 0)),
-            setup_token=setup_token,
-        )
-        ok = await client.connect()
-        if ok:
+            # Serverdan kelgan ma'lumotlarni saqlaymiz
+            creds = data.get("credentials", {})
+            cfg = {
+                "api_id": creds.get("api_id"),
+                "api_hash": creds.get("api_hash"),
+                "bot_token": creds.get("bot_token"),
+                "api_url": data.get("api_url"),
+                "api_secret": data.get("api_secret", ""),
+                "groups": data.get("groups", []),
+            }
+            # Avvalgi display_name ni saqlab qolish
+            old_cfg = app_config.load()
+            if old_cfg and "display_name" in old_cfg:
+                cfg["display_name"] = old_cfg["display_name"]
+            
+            app_config.save(cfg)
             self._app.ui_callback(self._app.show_main)
+        except Exception as exc:
+            self._set_status(f"Saqlashda xatolik: {exc}")
+
+    def _on_auto_pair(self) -> None:
+        self._set_status("Ulanmoqda...", is_error=False)
+        self._auto_btn.configure(state="disabled")
+        self._app.run_async(self._do_auto_pair())
+
+    async def _do_auto_pair(self) -> None:
+        data = await api_client.auto_pair()
+        self._app.ui_callback(self._auto_btn.configure, state="normal")
+        if data.get("ok"):
+            self._app.ui_callback(self._save_and_proceed, data)
         else:
-            self._app.ui_callback(
-                self._status_label.configure,
-                text="⚠️ Bot serverga ulanib bo'lmadi. Internet yoki URL tekshiring.",
-                text_color="#e74c3c",
-            )
-            self._app.ui_callback(self._start_btn.configure, state="normal")
+            err = data.get("error", "Noma'lum xatolik")
+            self._app.ui_callback(self._set_status, f"Avtomatik ulanish xatosi: {err}")
+
+    def _on_pair_code(self) -> None:
+        code = self._code_entry.get().strip().upper()
+        if not code:
+            self._set_status("Kodni kiriting!")
+            return
+            
+        self._set_status("Kod tekshirilmoqda...", is_error=False)
+        self._pair_btn.configure(state="disabled")
+        
+        # Odatda remote server domenini bilishimiz kerak
+        server_url = getattr(self._app, "_deep_link_server", "http://127.0.0.1:8080")
+        
+        self._app.run_async(self._do_pair(server_url, code))
+
+    async def _do_pair(self, server_url: str, code: str) -> None:
+        data = await api_client.pair(server_url, code)
+        self._app.ui_callback(self._pair_btn.configure, state="normal")
+        if data.get("ok"):
+            self._app.ui_callback(self._save_and_proceed, data)
+        else:
+            err = data.get("error", "Noma'lum xatolik")
+            self._app.ui_callback(self._set_status, f"Xatolik: {err}")

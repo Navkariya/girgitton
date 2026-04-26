@@ -1,8 +1,8 @@
 """
 Desktop App lokal config saqlash va o'qish.
 
-Config fayl: ~/.girgitton_app.json
-Bot /setup buyrug'i orqali olingan config.json import qilinadi.
+Config fayl: ~/.girgitton/credentials.json
+Bu fayl faqat auto-pair yoki pair code orqali olingan credentials saqlaydi.
 """
 
 import json
@@ -12,7 +12,9 @@ from typing import Any, Optional
 
 logger = logging.getLogger("girgitton")
 
-_CONFIG_PATH = Path.home() / ".girgitton_app.json"
+_CONFIG_DIR = Path.home() / ".girgitton"
+_CONFIG_DIR.mkdir(exist_ok=True)
+_CONFIG_PATH = _CONFIG_DIR / "credentials.json"
 
 
 def load() -> Optional[dict[str, Any]]:
@@ -36,15 +38,13 @@ def save(cfg: dict[str, Any]) -> None:
         raise
 
 
-def import_from_file(path: str) -> dict[str, Any]:
-    """Bot /setup faylini parse qiladi va lokal saqlaydi."""
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
-    required = {"bot_token", "api_id", "api_hash", "api_url", "api_secret", "group_id", "setup_token"}
-    missing = required - data.keys()
-    if missing:
-        raise ValueError(f"Config faylida yetishmaydi: {missing}")
-    save(data)
-    return data
+def clear() -> None:
+    """Saqlangan credentials'larni o'chiradi (chiqish / unpair uchun)."""
+    if _CONFIG_PATH.exists():
+        try:
+            _CONFIG_PATH.unlink()
+        except Exception as exc:
+            logger.warning("Credentials o'chirib bo'lmadi: %s", exc)
 
 
 def get(key: str, default: Any = None) -> Any:

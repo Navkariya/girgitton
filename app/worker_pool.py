@@ -141,15 +141,27 @@ class GlobalWorkerPool:
         self._worker_tasks: list[asyncio.Task] = []
 
     async def start(self) -> None:
+        # Session fayllarni ~/.girgitton/ ichida saqlash
+        # (.exe dan ishga tushganda CWD yoziladigan joy bo'lmasligi mumkin)
+        from pathlib import Path
+        session_dir = Path.home() / ".girgitton"
+        session_dir.mkdir(exist_ok=True)
+
         for i in range(self._n_workers):
+            session_path = str(session_dir / f"worker_{i}")
+            logger.info("W%d yaratilmoqda: session=%s", i, session_path)
             client = TelegramClient(
-                f"worker_{i}",
+                session_path,
                 self._api_id,
                 self._api_hash,
             )
-            await client.start(bot_token=self._bot_token)
-            self._clients.append(client)
-            logger.info("W%d ishga tushdi", i)
+            try:
+                await client.start(bot_token=self._bot_token)
+                self._clients.append(client)
+                logger.info("W%d ishga tushdi ✓", i)
+            except Exception as exc:
+                logger.error("W%d ishga tushirishda xatolik: %s", i, exc, exc_info=True)
+                raise
 
     async def stop(self) -> None:
         for _ in self._clients:

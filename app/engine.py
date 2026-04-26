@@ -1,16 +1,16 @@
 """
-Upload orkestratori — GUI va WorkerPool orasidagi ko'prik.
+Upload orkestratori — GUI va GlobalWorkerPool orasidagi ko'prik.
 
-Vazifasi:
-  1. Media fayllarni skanerlaydi
-  2. Oldingi progressni yuklaydi
-  3. Qismlarni WorkerPool ga uzatadi
-  4. Progress saqlanadi har qism tugagach
-  5. Tugagach notify() orqali GUI xabardor qilinadi
+Vazifasi (v2.1 multi-group):
+  1. Belgilangan guruhlar uchun media fayllarni skanerlaydi
+  2. Barcha vazifalarni GlobalWorkerPool ga navbatma-navbat (round-robin) uzatadi
+  3. Progress saqlanadi
+  4. Tugagach notify() orqali GUI xabardor qilinadi
 """
 
 import asyncio
 import logging
+from collections import deque
 from typing import Awaitable, Callable, Optional
 
 from app import app_config
@@ -20,7 +20,7 @@ from helpers import chunked, scan_media_files
 logger = logging.getLogger("girgitton")
 
 NotifyFn = Callable[[str], Awaitable[None]]
-ProgressFn = Callable[[int, int, float], None]  # (done, total, speed_mb_s)
+ProgressFn = Callable[[int, int, int, float], None]  # (group_id, done, total, speed_mb_s)
 
 
 class UploadEngine:
@@ -34,40 +34,59 @@ class UploadEngine:
 
     async def run(
         self,
-        folder: str,
+        group_folders: dict[int, str],
         notify: NotifyFn,
         on_progress: ProgressFn,
         on_throttle: Optional[ThrottleFn] = None,
     ) -> None:
         cfg = app_config.load()
         if not cfg:
-            await notify("⚠️ Config topilmadi. /setup qayta bajaring.")
+            await notify("⚠️ Config topilmadi. Avval ulaning.")
             return
 
         api_id: int = int(cfg["api_id"])
         api_hash: str = cfg["api_hash"]
         bot_token: str = cfg["bot_token"]
-        chat_id: int = int(cfg["group_id"])
 
         import config as srv_config
 
         self._stop_flag = [False]
-        media_files = scan_media_files(folder)
-        if not media_files:
-            await notify("ℹ️ Papkada media fayl topilmadi.")
+        
+        # Tayyorgarlik: har bir guruh uchun vazifalarni yig'ish
+        tasks_by_group: dict[int, list[tuple]] = {}
+        total_batches_all = 0
+        
+        for group_id, folder in group_folders.items():
+            if not folder:
+                continue
+                
+            logger.info("Media scan: G%s -> %s", group_id, folder)
+            try:
+                media_files = scan_media_files(folder)
+            except Exception as exc:
+                await notify(f"❌ Papka skanerlashda xatolik ({folder}): {exc}")
+                continue
+
+            if not media_files:
+                await notify(f"ℹ️ {folder} da media topilmadi.")
+                continue
+
+            batches = chunked(media_files, srv_config.BATCH_SIZE)
+            total = len(batches)
+            
+            # TODO: Progressni tiklash logika qo'shish mumkin
+            offset = 0 
+            
+            tasks_by_group[group_id] = [
+                (offset + i + 1, batch, total) for i, batch in enumerate(batches)
+            ]
+            total_batches_all += total
+
+        if not tasks_by_group:
+            await notify("Yuklash uchun hech narsa topilmadi.")
             return
 
-        batches = chunked(media_files, srv_config.BATCH_SIZE)
-        total = len(batches)
-
-        start_batch = int(app_config.get("last_progress_batch") or 0)
-        if start_batch > 0 and start_batch < total:
-            await notify(f"ℹ️ Oldingi progress topildi: {start_batch}/{total}. Davom etilmoqda...")
-            batches = batches[start_batch:]
-            offset = start_batch
-        else:
-            offset = 0
-
+        logger.info("WorkerPool yaratilmoqda: workers=%d", srv_config.UPLOAD_WORKERS)
         pool = GlobalWorkerPool(
             api_id=api_id,
             api_hash=api_hash,
@@ -83,36 +102,36 @@ class UploadEngine:
 
         await pool.start()
         pool.run_workers(
-            total_batches=total + offset,
+            total_batches=total_batches_all,
             notify=notify,
             stop_flag=self._stop_flag,
             on_throttle=on_throttle,
         )
 
-        await notify(f"▶️ Yuklash boshlandi: {len(media_files)} ta fayl, {total} ta qism")
-        app_config.set_last_folder(folder)
+        await notify(f"▶️ Yuklash boshlandi (jami {total_batches_all} qism)")
 
-        futures: list[asyncio.Future] = []
-        for i, batch in enumerate(batches):
-            fut = pool.submit(
-                batch_idx=offset + i + 1,
-                batch=batch,
-                chat_id=chat_id,
-            )
-            futures.append(fut)
+        # Navbatma-navbat (round-robin) guruhlarga xizmat ko'rsatamiz
+        queues = {gid: deque(tasks) for gid, tasks in tasks_by_group.items()}
+        active_groups = list(queues.keys())
+        
+        futures_map: dict[asyncio.Future, tuple[int, int, int]] = {}
 
-        done_count = 0
-        for i, fut in enumerate(futures):
+        while active_groups:
+            for gid in list(active_groups):
+                if not queues[gid]:
+                    active_groups.remove(gid)
+                    continue
+                
+                batch_idx, batch, total = queues[gid].popleft()
+                fut = pool.submit(batch_idx, batch, gid)
+                futures_map[fut] = (gid, batch_idx, total)
+
+        # Progress kutish
+        for fut, (gid, batch_idx, total) in futures_map.items():
             try:
                 await fut
-                done_count += 1
-                # Progress callback
-                speed = 0.0  # pool workers log haqiqiy tezlikni
-                on_progress(offset + i + 1, total + offset, speed)
-                # Progress saqlash
-                cfg_data = app_config.load() or {}
-                cfg_data["last_progress_batch"] = offset + i + 1
-                app_config.save(cfg_data)
+                # Speed bu yerda hisoblanmaydi to'g'ridan to'g'ri, worker logidan chiqadi, vaqtincha 0
+                on_progress(gid, batch_idx, total, 0.0)
             except asyncio.CancelledError:
                 pass
 
@@ -120,9 +139,6 @@ class UploadEngine:
         self._pool = None
 
         if self._stop_flag[0]:
-            await notify("🛑 Yuklash to'xtatildi. Progress saqlandi.")
+            await notify("🛑 Yuklash to'xtatildi.")
         else:
-            cfg_data = app_config.load() or {}
-            cfg_data["last_progress_batch"] = 0
-            app_config.save(cfg_data)
-            await notify(f"✅ Barcha {len(media_files)} ta fayl yuborildi!")
+            await notify("✅ Barcha vazifalar yakunlandi!")

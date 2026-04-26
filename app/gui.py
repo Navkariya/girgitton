@@ -24,10 +24,11 @@ _HEIGHT = 620
 
 
 class App(ctk.CTk):
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, loop: asyncio.AbstractEventLoop, deep_link_url: Optional[str] = None) -> None:
         super().__init__()
         self.loop = loop
         self._current_frame: Optional[ctk.CTkFrame] = None
+        self._deep_link_url = deep_link_url
 
         self.title(_TITLE)
         self.geometry(f"{_WIDTH}x{_HEIGHT}")
@@ -38,7 +39,7 @@ class App(ctk.CTk):
         self._container.pack(fill="both", expand=True)
 
         cfg = app_config.load()
-        if cfg and cfg.get("bot_token") and cfg.get("display_name"):
+        if cfg and cfg.get("bot_token") and cfg.get("groups") and not self._deep_link_url:
             self.show_main()
         else:
             self.show_login()

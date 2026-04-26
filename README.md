@@ -1,8 +1,8 @@
-# 🐈 Girgitton v2
+# 🐈 Girgitton v2.1
 
 Telegram media upload bot + Desktop App.
 
-Kompyuteringizdagi rasm va videolarni guruhga avtomatik ravishda 5 tadan qism qilib yuboradi.
+Kompyuteringizdagi rasm va videolarni guruhlarga avtomatik ravishda 5 tadan qism qilib yuboradi. Yangilangan **v2.1** versiyasida ulanish butunlay xavfsiz (fayllarsiz) va ko'p-guruhli (multi-group) parallel yuklash qobiliyatiga ega!
 
 ---
 
@@ -15,74 +15,56 @@ Har 5 talik qism uchun:
 
 ---
 
+## Yangiliklar (v2.1)
+
+- **Xavfsiz Pairing:** Endi `config.json` faylini yuklab olish va o'tkazish yo'q. Guruhda `/pair` buyrug'ini berasiz va to'g'ridan-to'g'ri appga ulanasiz (yoki 6 xonali kod orqali).
+- **Deep Link:** `girgitton://` protokoli orqali bitta bosishda Desktop App avtomatik ochilib, serverga ulanadi.
+- **Multi-group Upload:** Bir vaqtning o'zida bir nechta guruhlarga fayl yuklash mumkin (round-robin GlobalWorkerPool yordamida).
+- **Local Auto-pair:** Agar bot va app bitta kompyuterda ishlayotgan bo'lsa, hech qanday kodsiz to'g'ridan to'g'ri ulanadi.
+
+---
+
 ## Arxitektura
 
 ```
-Railway (24/7)          Desktop App (siz)
-┌──────────────────┐    ┌──────────────────────┐
-│ Telegram Bot     │    │ CustomTkinter GUI     │
-│ aiohttp Mini API │◄──►│ asyncio upload engine│
-│ Redis storage    │    │ GlobalWorkerPool      │
-└──────────────────┘    └──────────────────────┘
+Railway (24/7)             Desktop App (siz)
+┌─────────────────────┐    ┌──────────────────────┐
+│ Telegram Bot        │    │ CustomTkinter GUI    │
+│ aiohttp Mini API    │◄──►│ asyncio upload engine│
+│ Redis storage       │    │ GlobalWorkerPool     │
+└─────────────────────┘    └──────────────────────┘
 ```
 
 ---
 
-## Railway Deploy
+## Deploy va O'rnatish
 
-### 1. Muhit o'zgaruvchilari
+### 1. Muhit o'zgaruvchilari (Server)
 
-Railway Dashboard → Variables:
+Railway Dashboard yoki lokal `.env` da kerak:
 
-```
-API_ID=
-API_HASH=
-BOT_TOKEN=
-OWNER_ID=
-API_SECRET=    # istalgan uzun tasodifiy satr
-```
-
-Redis — Railway Dashboard → New Service → Database → Redis (REDIS_URL avtomatik qo'shiladi)
-
-### 2. Deploy
-
-```bash
-git push origin main
+```env
+API_ID=...
+API_HASH=...
+BOT_TOKEN=...
+OWNER_ID=...
+API_SECRET=your_random_secret   # App xavfsizligi uchun maxfiy so'z
+ALLOWED_USERS=111,222           # Ixtiyoriy, qo'shimcha adminlar
 ```
 
-Railway avtomatik build va deploy qiladi. Health check: `GET /health`
+Redis — Railway Dashboard → New Service → Database → Redis (`REDIS_URL` avtomatik qo'shiladi).
 
----
+### 2. Desktop App
 
-## Desktop App
+Bot ga `/download` yuboring va platformangiz uchun dasturni yuklab oling.
 
-### Yuklab olish
+### 3. Ulanish
 
-Bot ga `/download` yuboring → platformangiz uchun havola
-
-### Birinchi ishga tushirish
-
-1. `/setup` → config.json faylini yuklab oling
-2. Girgitton.exe → "Config import" → faylni tanlang
-3. Ismingizni kiriting → Boshlash
-
-### Qurilish (Developer)
-
-```bash
-pip install -r requirements-app.txt pyinstaller
-pyinstaller build/girgitton.spec
-```
-
----
-
-## Lokal test (bot)
-
-```bash
-pip install -r requirements.txt
-cp .env.example .env
-# .env ni to'ldiring
-python main.py
-```
+1. Telegramda o'z guruhingizga botni qo'shing.
+2. Guruhda `/pair` buyrug'ini bering.
+3. Bot sizga 6-xonali kod va **Deep link** beradi.
+4. Deep link ni bosing (App avtomatik ulanadi) yoki Appni ochib 6-xonali kodni kiriting.
+5. Har bir guruh uchun papka tanlang va "Boshlash" ni bosing.
 
 ---
 
@@ -92,12 +74,13 @@ python main.py
 |--------|----------|
 | `/start` | Yordam |
 | `/download` | Desktop App yuklab olish |
-| `/setup` | Config fayl + token (30 daqiqa) |
-| `/status` | App holati |
-| `/stop` | Yuklashtni to'xtatish |
+| `/pair` | Guruhni faollashtirish va ulanish kodi olish (Guruhda) |
+| `/unpair` | Guruhni faol ro'yxatdan o'chirish (Guruhda) |
+| `/groups` | Barcha faol guruhlarni ko'rish |
+| `/status` | App holati (progress bar) |
+| `/stop` | Yuklashni to'xtatish (App ga signal) |
 | `/allow <ID>` | Foydalanuvchi qo'shish (faqat egasi) |
 | `/disallow <ID>` | Ruxsatni olib tashlash |
-| `/allowed` | Ro'yxat |
 
 ---
 
@@ -105,30 +88,21 @@ python main.py
 
 ```
 girgitton/
-├── main.py              ← Railway bot + aiohttp API server
-├── api.py               ← Mini API endpointlar (HMAC auth)
-├── storage.py           ← Redis + JSON fallback
+├── main.py              ← Railway bot + API server
+├── api.py               ← Mini API endpointlar (/pair, /groups)
+├── storage.py           ← Redis + JSON fallback (pair kodlar uchun)
 ├── config.py            ← Sozlamalar
-├── sender.py            ← Media yuborish logikasi
-├── helpers.py           ← Fayl skanerlash, logging
-├── requirements.txt     ← Server kutubxonalari
-├── requirements-app.txt ← Desktop App kutubxonalari
-├── railway.toml         ← Railway deploy konfiguratsiyasi
-├── nixpacks.toml        ← Build konfiguratsiyasi
-├── app/                 ← Desktop App
-│   ├── __main__.py      ← Entry point (thread setup)
-│   ├── gui.py           ← App class, frame switching
-│   ├── login_frame.py   ← Config import oynasi
-│   ├── main_frame.py    ← Asosiy ish oynasi
-│   ├── throttle_dialog.py ← Throttle ogohlantiruv
-│   ├── engine.py        ← Upload orkestratori
-│   ├── worker_pool.py   ← GlobalWorkerPool (3-criterion rotation)
-│   ├── api_client.py    ← Railway HTTPS client (HMAC)
-│   └── app_config.py    ← Lokal config saqlash
+├── app/                 ← Desktop App (GUI)
+│   ├── __main__.py      ← Entry point (deep link handler)
+│   ├── gui.py           ← App class
+│   ├── login_frame.py   ← Pair code oyna
+│   ├── main_frame.py    ← Multi-group papka tanlash
+│   ├── engine.py        ← Orchestrator
+│   ├── worker_pool.py   ← Session rotation pool
+│   └── api_client.py    ← HTTP Client
 ├── build/
-│   └── girgitton.spec   ← PyInstaller spec
-└── .github/workflows/
-    └── build-release.yml ← 3-platform CI/CD
+│   └── girgitton.spec   ← PyInstaller config (girgitton:// URL protocol)
+└── .github/workflows/   ← CI/CD Actions
 ```
 
 ---

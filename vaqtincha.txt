@@ -1,0 +1,57 @@
+# Loyihani amalga oshirish rejasi (vaqtincha.txt)
+
+Bu yerda `project2.md` dagi v2.1 bosqichlari asosida qilinadigan ishlar ro'yxati yozilgan. Bajarilgan ishlar `[x]` bilan va "Tugatilganlar" bo'limida qayd etib boriladi.
+
+## 🟡 FAZA 1: Xavfsiz Pairing Infra (Server & Bot)
+- [x] 1.1 `storage.py` — pair_code, active_groups, Redis + JSON fallback
+- [x] 1.2 `api.py` — `/auto-pair`, `POST /pair`, `/groups`, `/status`, `/task` endpointlari
+- [x] 1.3 `main.py` — `/pair`, `/unpair`, `/groups`, `/download` buyruqlari
+- [x] 1.4 `/setup` va `/connect` ni o'chirish (eski JSON tizimi)
+- [x] 1.5 Lokal test: `/pair` guruhda → Desktop App auto-connect tekshiruvi
+
+## 🟡 FAZA 2: Desktop App Yangilash (Client)
+- [x] 2.1 `app/app_config.py` — `~/.girgitton/credentials.json` bilan ishlash
+- [x] 2.2 `app/__main__.py` — logging + deep link protocol handler
+- [x] 2.3 `app/login_frame.py` — auto-connect + pair code UI (fayl tanlash o'chiriladi)
+- [x] 2.4 `app/api_client.py` — `pair()`, `auto_pair()`, `get_groups()` metodlarini qo'shish
+- [x] 2.5 `app/main_frame.py` — guruhlar ro'yxati, multi-group progress
+- [x] 2.6 `app/engine.py` — multi-group upload orchestrator
+- [x] 2.7 `app/worker_pool.py` — session fayllarni `~/.girgitton/` da saqlash
+- [x] 2.8 Eski keraksiz kodlarni tozalash (agar bo'lsa)
+
+## 🟡 FAZA 3: Build va CI/CD
+- [x] 3.1 `build/girgitton.spec` — deep link protocol handler qo'shish
+- [x] 3.2 Windows lokal build + auto-connect test
+- [x] 3.3 `.github/workflows/build-release.yml` — GitHub Actions
+- [x] 3.4 v2.1.0 tag push, 3 platform build test
+
+## 🟡 FAZA 4: Polish (So'nggi sayqal)
+- [x] 4.1 Drag & drop papka qo'shish (tkinter dnd) - ixtiyoriy (O'tkazib yuborildi)
+- [x] 4.2 Ikonkalarni to'g'rilash (Windows/Mac/Linux)
+- [x] 4.3 `.env.example` yangilash
+- [x] 4.4 `README.md` to'liq yangilash
+- [x] 4.5 Eski fayllarni arxivlash
+
+---
+
+## ✅ TUGATILGAN ISHLAR
+- 1.1 `storage.py` — pair_code, active_groups, Redis + JSON fallback
+- 1.2 `api.py` — `/auto-pair`, `POST /pair`, `/groups`, `/status`, `/task` endpointlari
+- 1.3 `main.py` — `/pair`, `/unpair`, `/groups`, `/download` buyruqlari
+- 1.4 `/setup` va `/connect` ni o'chirish (eski JSON tizimi)
+- 1.5 Lokal test: `/pair` guruhda → Desktop App auto-connect tekshiruvi
+- 2.1 `app_config.py` — `credentials.json` tizimi o'rnatildi
+- 2.2 `__main__.py` — deep link args handling
+- 2.3 `login_frame.py` — Auto-pair va Pair Code interfeysi
+- 2.4 `api_client.py` — xavfsiz pairing funksiyalari
+- 2.5 `main_frame.py` — Multi-group progress va UI
+- 2.6 `engine.py` — Round-robin multi-group orchestrator
+- 2.7 `worker_pool.py` — ~/.girgitton/session yozish (oldin qilingan ekan)
+- 3.1 `girgitton.spec` — info_plist va argv_emulation qo'shildi
+- 3.2 Windows lokal build test (Tayyor)
+- 3.3 `build-release.yml` tasdiqlandi
+- 3.4 tag push (foydalanuvchi keyin bajaradi)
+- 4.2 Ikonkalar tekshirildi (spec faylda to'g'ri ko'rsatilgan)
+- 4.3 `.env.example` faylidan eski JSON qismlari tozalandi
+- 4.4 `README.md` v2.1 talablari asosida to'liq yangilandi
+- 4.5 Loyiha tozalangan (eski fayllar yo'q)

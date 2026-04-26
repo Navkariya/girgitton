@@ -43,7 +43,7 @@ exe = EXE(
     runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
-    argv_emulation=False,
+    argv_emulation=True,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
@@ -63,4 +63,13 @@ if sys.platform == "darwin":
         name="Girgitton.app",
         icon=str(ROOT / "app" / "assets" / "icon.icns"),
         bundle_identifier="com.girgitton.app",
+        info_plist={
+            "CFBundleURLTypes": [
+                {
+                    "CFBundleURLName": "Girgitton",
+                    "CFBundleURLSchemes": ["girgitton"],
+                }
+            ],
+            "NSHighResolutionCapable": "True",
+        },
     )
