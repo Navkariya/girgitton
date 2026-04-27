@@ -110,33 +110,41 @@ class UploadEngine:
 
         await notify(f"▶️ Yuklash boshlandi (jami {total_batches_all} qism)")
 
-        # Navbatma-navbat (round-robin) guruhlarga xizmat ko'rsatamiz
         queues = {gid: deque(tasks) for gid, tasks in tasks_by_group.items()}
-        active_groups = list(queues.keys())
-        
         futures_map: dict[asyncio.Future, tuple[int, int, int]] = {}
+        dones_by_group = {gid: 0 for gid in group_folders.keys()}
 
-        while active_groups:
-            for gid in list(active_groups):
-                if not queues[gid]:
-                    active_groups.remove(gid)
-                    continue
-                
+        # Dastlabki vazifalarni qo'shish (har bir guruhdan 1 tadan)
+        for gid in list(queues.keys()):
+            if queues[gid]:
                 batch_idx, batch, total = queues[gid].popleft()
                 fut = pool.submit(batch_idx, batch, gid)
                 futures_map[fut] = (gid, batch_idx, total)
 
-        # Progress kutish
-        dones_by_group = {gid: 0 for gid in group_folders.keys()}
-        for fut in asyncio.as_completed(list(futures_map.keys())):
-            try:
-                await fut
-                gid, batch_idx, total = futures_map[fut]
-                dones_by_group[gid] += 1
-                # Speed bu yerda hisoblanmaydi to'g'ridan to'g'ri, worker logidan chiqadi, vaqtincha 0
-                on_progress(gid, dones_by_group[gid], total, 0.0)
-            except asyncio.CancelledError:
-                pass
+        # Asosiy kuzatish sikli
+        while futures_map:
+            done, _ = await asyncio.wait(
+                list(futures_map.keys()), 
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            for fut in done:
+                gid, batch_idx, total = futures_map.pop(fut)
+                
+                try:
+                    await fut
+                    dones_by_group[gid] += 1
+                    on_progress(gid, dones_by_group[gid], total, 0.0)
+                except asyncio.CancelledError:
+                    pass
+                except Exception as exc:
+                    logger.error("Vazifada kutilmagan xato: %s", exc)
+
+                # Shu guruh uchun keyingi qismni yuborish (agar bo'lsa)
+                if not self._stop_flag[0] and queues[gid]:
+                    next_batch_idx, next_batch, next_total = queues[gid].popleft()
+                    new_fut = pool.submit(next_batch_idx, next_batch, gid)
+                    futures_map[new_fut] = (gid, next_batch_idx, next_total)
 
         await pool.stop()
         self._pool = None
