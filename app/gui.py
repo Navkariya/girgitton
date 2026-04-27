@@ -64,8 +64,8 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
     def run_async(self, coro) -> asyncio.Future:
         return asyncio.run_coroutine_threadsafe(coro, self.loop)
 
-    def ui_callback(self, fn, *args) -> None:
-        self.after(0, fn, *args)
+    def ui_callback(self, fn, *args, **kwargs) -> None:
+        self.after(0, lambda: fn(*args, **kwargs))
 
     def _on_close(self) -> None:
         if self._current_frame and hasattr(self._current_frame, "on_close"):
