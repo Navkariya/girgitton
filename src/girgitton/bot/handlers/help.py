@@ -23,13 +23,11 @@ def register_help(client: TelegramClient) -> None:
     @safe_handler
     async def cmd_download(event: EventT) -> None:
         base = f"https://github.com/{github_repo}/releases/latest/download"
-        releases = f"https://github.com/{github_repo}/releases/latest"
         await event.reply(
             "💻 **Girgitton Desktop App** — yuklab olish\n\n"
             f"🪟 [Windows (.exe)]({base}/Girgitton_Windows.exe)\n"
             f"🍎 [macOS (.zip)]({base}/Girgitton_macOS.zip)\n"
             f"🐧 [Linux (.bin)]({base}/Girgitton_Linux.bin)\n\n"
-            f"📋 [Barcha versiyalar va SHA256]({releases})\n\n"
             "**Ishlatish:**\n"
             "1. Operatsion tizimingizga mos faylni yuklang\n"
             "2. Faylni ochib App ni ishga tushiring\n"

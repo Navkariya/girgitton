@@ -17,9 +17,7 @@
 | 🍎 macOS   | [Girgitton_macOS.zip](https://github.com/Navkariya/girgitton/releases/latest/download/Girgitton_macOS.zip)                                           |
 | 🐧 Linux   | [Girgitton_Linux.bin](https://github.com/Navkariya/girgitton/releases/latest/download/Girgitton_Linux.bin)                                           |
 
-> Ha to'g'ri va aniq — [Releases sahifasi](https://github.com/Navkariya/girgitton/releases/latest) — SHA256 checksumlar.
-
-Bot ichida `/download` komandasi yuborganingizda ham shu havolalar keladi.
+Bot ichida `@girgitton_media_bot` ga `/download` yuborsangiz ham shu havolalar keladi.
 
 ---
 

@@ -25,7 +25,10 @@ _TITLE = "Girgitton v3.1"
 _WIDTH = 600
 _HEIGHT = 660
 
-_DEFAULT_SERVER = os.getenv("GIRGITTON_SERVER", "http://127.0.0.1:8080")
+_DEFAULT_SERVER = os.getenv(
+    "GIRGITTON_SERVER",
+    "https://web-production-1260c.up.railway.app",
+)
 
 
 class App(ctk.CTk):

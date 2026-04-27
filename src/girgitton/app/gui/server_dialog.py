@@ -69,7 +69,7 @@ class ServerURLDialog(ctk.CTkToplevel):
 
         self._entry = ctk.CTkEntry(
             self,
-            placeholder_text="https://your-app.up.railway.app",
+            placeholder_text="https://web-production-1260c.up.railway.app",
             font=ctk.CTkFont(size=14),
             height=40,
             width=440,
