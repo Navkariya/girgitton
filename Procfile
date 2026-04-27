@@ -1,1 +1,1 @@
-web: python -m girgitton.bot
+web: PYTHONPATH=src python -m girgitton.bot

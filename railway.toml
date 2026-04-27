@@ -5,7 +5,9 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "python -m girgitton.bot"
+# requirements.txt orqali deps o'rnatiladi, src/ ni PYTHONPATH ga qo'shamiz
+# (paket pip install qilinmaydi — src layout)
+startCommand = "PYTHONPATH=src python -m girgitton.bot"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
 healthcheckPath = "/health"

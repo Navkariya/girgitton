@@ -1,0 +1,10 @@
+# Bot uchun core deps (Railway/Nixpacks uchun)
+# Desktop App extras (customtkinter, tkinterdnd2, keyring) bu yerda yo'q
+# — Linux serverga kerak emas
+
+telethon>=1.34.0
+aiohttp>=3.9.0
+python-dotenv>=1.0.0
+redis>=5.0.0
+cryptography>=42.0.0
+python-json-logger>=2.0.7
