@@ -86,7 +86,7 @@ async def _upload_batch_files(
         await client.send_file(
             chat_id,
             file_paths,
-            captions=[media_caption] + [""] * (len(batch) - 1),
+            caption=[media_caption] + [""] * (len(batch) - 1),
             force_document=False,
         )
     except Exception as exc:
@@ -102,7 +102,7 @@ async def _upload_batch_files(
         await client.send_file(
             chat_id,
             file_paths,
-            captions=[doc_caption] + [""] * (len(batch) - 1),
+            caption=[doc_caption] + [""] * (len(batch) - 1),
             force_document=True,
         )
     except Exception as exc:
