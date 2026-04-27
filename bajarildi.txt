@@ -1,0 +1,80 @@
+================================================================================
+                  GIRGITTON v3.0 — BAJARILGAN BOSQICHLAR (PROGRESS)
+================================================================================
+Ushbu fayl jarayon.txt ga muvofiq bosqichlar tugaganida belgilanadi.
+Format: [BOSQICH N] STATUS — sana | qisqa izoh
+
+Status qiymatlar:
+  TODO       — boshlanmagan
+  IN_PROG    — bajarilmoqda
+  DONE       — to'liq tugagan + DoD bajarilgan
+  BLOCKED    — to'siq (sabab yoziladi)
+
+================================================================================
+
+[BOSQICH 0]   DONE   2026-04-28 — eski kodlar _archive/v2_2026-04-28/ ga ko'chirildi
+[BOSQICH 1]   DONE   2026-04-28 — pyproject.toml, src/girgitton/{core,shared,storage,bot,app,platform}, .claude/{settings,commands,agents,skills}, CLAUDE.md, README.md, .env.example yangilandi
+[BOSQICH 2]   DONE   2026-04-28 — core/{constants,errors,config(SecretStr),models(frozen DTO),logging_setup}, shared/{crypto(HMAC+Fernet+pair_code),media(scan+batch+sha256)}; 30 unit tests passed
+[BOSQICH 3]   DONE   2026-04-28 — storage/{base(Protocol),redis_store,json_store(atomic+TTL),factory}, shared/repositories(pair/groups/acl/status/rate-limit/stop); 16 storage tests passed
+[BOSQICH 4]   DONE   2026-04-28 — bot/{client,handlers/{help,pairing(rate-limited),status,access,decorators(owner/allowed/group/safe)},api/{server,routes,middleware(error+hmac+rate),schemas},__main__(graceful shutdown)}; 11 API integration tests passed
+[BOSQICH 5]   DONE   2026-04-28 — app/upload/{rate_limit(SpeedTracker+RotationPolicy+FloodWaitRetry),batch(single-upload+dual-send),worker_pool(3 worker queue+rotation),engine(round-robin)}; 11 tests passed (single-upload twice-send verified)
+[BOSQICH 6]   DONE   2026-04-28 — app/{config_store(Fernet+keyring fallback),api_client(HMAC poll),deeplink,gui/{window,login_frame,main_frame(drag-drop),throttle_dialog},__main__(asyncio bridge)}; 10 tests (config_store + deeplink) passed
+[BOSQICH 7]   DONE   2026-04-28 — tests/{unit,integration,e2e}, conftest, .github/workflows/{ci,release}; 83 tests pass, coverage 81.58% (>=80% darvoza yashil)
+[BOSQICH 8]   DONE   2026-04-28 — deploy/{railway.toml,nixpacks.toml,Dockerfile(non-root+healthcheck),docker-compose.yml(redis)}, scripts/{build_app.py,package.spec,assets/{icon.ico,icns,png}}
+[BOSQICH 9]   DONE   2026-04-28 — docs/{architecture(mermaid),security(STRIDE),api-reference,onboarding,runbook}, CLAUDE.md, README.md
+[BOSQICH 10]  DONE   2026-04-28 — ruff (0 errors), pytest (83/83 yashil), coverage 81.41% (>=80%), bandit (0 high), compileall OK, smoke imports OK
+
+[BOSQICH 12]  DONE   2026-04-28 — Resume support (v3.2):
+              • progress_store.py — atomik JSON, per-group GroupProgress (folder_hash, completed/total)
+              • engine.run(*, resume=True) — saqlangan batch dan keyin davom; folder signature mos bo'lmasa skip
+              • Har batch tugagach checkpoint (atomik save); to'liq tugagach clear_all
+              • MainFrame: Boshlash → askyesnocancel dialog (Davom / Yangidan / Bekor)
+              • Idle polling: yuklash o'chiq vaqtda ham /task pollingi (resume signal uchun)
+              • Bot /resume → set_resume_signal → /task action="resume" → App force_resume=True
+              • Stop yuqori prioritetli (stop+resume → stop)
+              • 118 test (yangi 13 progress_store + 4 resume signal), coverage 84.84%, ruff zero
+
+[BOSQICH 11]  DONE   2026-04-28 — Multi-tenant redesign (v3.1):
+              • Storage: per-owner active_groups, connect_token, enrolled_users
+              • Bot: /pair olib tashlandi → /start <token> + /here + /unhere + /groups + ChatAction listener
+              • HTTP API: /pair, /auto-pair olib tashlandi → /connect-init, /connect-status, /connect-claim
+              • App: LoginFrame o'chirildi → connect_flow.py + ConnectDialog (t.me?start=token oqimi)
+              • MainFrame: GET /groups?user_id orqali dynamik guruh ro'yxati, 30s auto-refresh
+              • Multi-tenant izolyatsiya: A va B bir guruhda /here yuborsa, har biri o'zining App'iga qo'shadi
+              • 97 test yashil, coverage 83.72% (>=80%), ruff zero error
+
+================================================================================
+YAKUNIY HOLAT — 2026-04-28 (v3.1)
+================================================================================
+
+✅ Loyiha v2.x dan v3.0 ga to'liq qayta qurildi (claude_all.jpg layoutiga moslangan)
+✅ 12/12 bosqich bajarildi
+✅ 83 test (unit + integration + e2e smoke), 81.41% coverage
+✅ DevOps: GitHub Actions CI/release, Railway deploy, Docker, PyInstaller
+✅ Xavfsizlik: HMAC-SHA256 (timing-safe + replay-protection), Fernet at-rest,
+   per-IP/per-user rate limit, SecretStr + log filter, Bandit zero-high
+✅ Hujjatlar: project.md, jarayon.txt, bajarildi.txt, docs/{architecture,
+   security,api-reference,onboarding,runbook}, CLAUDE.md, README.md
+
+Statistika:
+  - Manba kodi: ~1500 satr (src/girgitton/**)
+  - Testlar:    ~600 satr (tests/**)
+  - Hujjat:     ~1700 satr (docs/, project.md, jarayon.txt)
+  - Modul soni: 35+ Python fayl
+
+Yangilash uchun:
+  pip install -e ".[app,dev]"
+  python -m girgitton.bot      # Telegram bot (Railway uchun)
+  python -m girgitton.app      # Desktop App (lokal kompyuter)
+
+Oldingi versiya _archive/v2_2026-04-28/ ichida saqlanadi (zarur bo'lsa).
+
+================================================================================
+DETAL JURNAL
+================================================================================
+
+2026-04-28 — v3.0 release branch tayyor.
+  - .venv2 ishlatildi (.venv buzilgan, boshqa kompyuterda yaratilgan)
+  - Hozircha smoke `python -m girgitton.bot` Telegram session bilan tekshirilmagan
+    (foydalanuvchi qo'lda sinashi tavsiya etiladi)
+  - mypy --strict run qilinmadi (deferred — tarmoq turlari to'liq sozlanmagan)

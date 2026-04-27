@@ -1,0 +1,117 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: Girgitton.exe
+            release_name: Girgitton_Windows.exe
+          - os: macos-latest
+            artifact_name: Girgitton.app
+            release_name: Girgitton_macOS.zip
+          - os: ubuntu-latest
+            artifact_name: Girgitton
+            release_name: Girgitton_Linux.bin
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[app,build]"
+          pip install Pillow
+
+      - name: Linux extra deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk libxcb-xinerama0
+
+      - name: Build with PyInstaller
+        run: pyinstaller scripts/package.spec --clean --noconfirm
+
+      - name: Package macOS as zip
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd dist
+          zip -r Girgitton_macOS.zip Girgitton.app
+
+      - name: Rename Windows artifact
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Move-Item -Path "dist/Girgitton.exe" -Destination "dist/Girgitton_Windows.exe" -Force
+
+      - name: Rename Linux artifact
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mv dist/Girgitton dist/Girgitton_Linux.bin
+          chmod +x dist/Girgitton_Linux.bin
+
+      - name: SHA256 checksum
+        shell: bash
+        run: |
+          cd dist
+          if [ -f Girgitton_Windows.exe ]; then sha256sum Girgitton_Windows.exe > Girgitton_Windows.exe.sha256; fi
+          if [ -f Girgitton_macOS.zip ]; then shasum -a 256 Girgitton_macOS.zip > Girgitton_macOS.zip.sha256; fi
+          if [ -f Girgitton_Linux.bin ]; then sha256sum Girgitton_Linux.bin > Girgitton_Linux.bin.sha256; fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: girgitton-${{ matrix.os }}
+          path: |
+            dist/Girgitton_*
+            dist/Girgitton_*.sha256
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List
+        run: find artifacts -type f -ls
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/girgitton-windows-latest/Girgitton_Windows.exe
+            artifacts/girgitton-windows-latest/Girgitton_Windows.exe.sha256
+            artifacts/girgitton-macos-latest/Girgitton_macOS.zip
+            artifacts/girgitton-macos-latest/Girgitton_macOS.zip.sha256
+            artifacts/girgitton-ubuntu-latest/Girgitton_Linux.bin
+            artifacts/girgitton-ubuntu-latest/Girgitton_Linux.bin.sha256
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

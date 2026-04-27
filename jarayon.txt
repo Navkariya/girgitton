@@ -1,0 +1,496 @@
+================================================================================
+                  GIRGITTON v3.0 — JARAYON / BOSQICHLAR REJASI
+================================================================================
+Maqsad: Telegram Bot (Railway) + Desktop App (lokal) ni Claude Code Project
+        Structure (claude_all.jpg) layoutiga moslashtirib 0 dan qurish.
+
+Format: Har bosqich uchun:
+  - Maqsad (Why)
+  - Texnik zadanya (TZ)
+  - Kiruvchi/Chiquvchi artifaktlar
+  - Definition of Done (DoD)
+  - Tegishli xavfsizlik kontrollari
+
+Tartib: BOSQICH 0 → BOSQICH 10. Bittasi yakunlanmasdan keyingisini boshlamaydi.
+
+================================================================================
+BOSQICH 0  —  PRE-FLIGHT (HOZIRGI HOLATNI ARXIVLASH)
+================================================================================
+Maqsad: Eski v2 kodini saqlab, yangi struktura uchun toza maydon ochish.
+
+TZ:
+  0.1  `_archive/v2_2026-04-28/` katalogini yaratish.
+  0.2  Quyidagi eski fayllarni unga ko'chirish:
+         main.py, api.py, sender.py, storage.py, helpers.py, config.py,
+         app/, build/, scratch_*.py, test_dummy*.*, vaqtincha.txt,
+         CLAUDE_CODE_YORIQNOMA.md, project2.md, error.log, girgitton.log
+  0.3  Saqlash kerak (root da qoladi):
+         .env (sirlar), .env.example, .gitignore,
+         claude_all.jpg (havola rasm), girgitton_app_icon.jpg,
+         girgitton_session.session (Telegram bot sessiyasi),
+         README.md, requirements.txt, requirements-app.txt,
+         project.md, jarayon.txt, bajarildi.txt,
+         nixpacks.toml, railway.toml (vaqtincha)
+  0.4  `__pycache__/` ni o'chirish.
+  0.5  bajarildi.txt ga `[BOSQICH 0]` belgilash.
+
+DoD:
+  - root da faqat saqlanishi kerak fayllar qoladi
+  - eski kod _archive/ ichida
+  - .env teginilmagan
+
+Xavfsizlik:
+  - .env hech qachon arxivga ham nusxalanmaydi (faqat root saqlanadi)
+  - .gitignore: _archive/, .env, *.session, *.log, .venv/, build/, dist/
+
+================================================================================
+BOSQICH 1  —  LOYIHA SKELETI (TUSHKEL FAYLLAR + KATALOGLAR)
+================================================================================
+Maqsad: claude_all.jpg layoutini ekvivalent katalog daraxtiga ko'chirish.
+
+TZ:
+  1.1  pyproject.toml (PEP 621):
+         - name = "girgitton"
+         - version = "3.0.0"
+         - python = ">=3.11"
+         - dependencies: telethon, aiohttp, python-dotenv, redis,
+                         cryptography, python-json-logger
+         - optional [app]: customtkinter, tkinterdnd2
+         - optional [dev]: pytest, pytest-asyncio, ruff, mypy,
+                           bandit, pip-audit, pyinstaller
+         - [tool.ruff], [tool.mypy], [tool.pytest.ini_options]
+
+  1.2  Quyidagi kataloglarni yaratish (har birida __init__.py):
+         src/girgitton/{core,shared,storage,bot,bot/handlers,bot/api,
+                        app,app/gui,app/upload,platform}
+         tests/{unit,integration,e2e}
+         scripts/, deploy/, docs/
+
+  1.3  .claude/ — Claude Code mahalliy konfiguratsiyasi:
+         .claude/settings.json (hooks: post-edit ruff, mypy)
+         .claude/commands/{deploy.md,build-app.md,verify.md}
+         .claude/agents/{bot-handler-reviewer.md,
+                         upload-engine-reviewer.md,
+                         security-auditor.md}
+         .claude/skills/batch-album-sender/SKILL.md
+
+  1.4  CLAUDE.md (root) — loyihaga xos AI yo'riqnomasi:
+         - struktura ko'rsatkichi
+         - "always run ruff && mypy before commit"
+         - "tests live next to code in tests/"
+         - "secrets only via Settings"
+
+  1.5  README.md ni qisqa "v3 — qurilmoqda" matni bilan yangilash.
+
+DoD:
+  - `tree -L 3` claude_all.jpg ga mos
+  - `python -c "import girgitton"` xatosiz (bo'sh paket)
+  - bajarildi.txt: BOSQICH 1 OK
+
+================================================================================
+BOSQICH 2  —  CORE QATLAM (DOMAIN-PURE)
+================================================================================
+Maqsad: Ramka-mustaqil ichki domen — boshqa modullar shu yerga bog'liq.
+
+TZ:
+  2.1  src/girgitton/core/constants.py
+         - IMAGE_EXTENSIONS, VIDEO_EXTENSIONS, MEDIA_EXTENSIONS
+         - BATCH_SIZE = 5
+         - DEFAULT_WORKERS = 3
+         - DELAY_BETWEEN_STEPS = 1.0
+         - DELAY_BETWEEN_BATCHES = 2.0
+
+  2.2  src/girgitton/core/errors.py
+         - class GirgittonError(Exception)
+         - class ConfigError, AuthError, RateLimitError,
+                 PairCodeInvalidError, FloodWaitError(seconds:int)
+
+  2.3  src/girgitton/core/config.py
+         - SecretStr (frozen): __str__/__repr__ = "***"
+         - @dataclass(frozen=True) class Settings(...)
+         - Settings.load() — os.environ dan o'qiydi (komment, 0 default ni
+                              shilash, validatsiya)
+         - Settings.validate() — majburiy maydon yo'q bo'lsa raise
+
+  2.4  src/girgitton/core/models.py — frozen dataclass DTO:
+         - PairCode(code, group_id, group_title, user_id, expires_at)
+         - ActiveGroup(id, title)
+         - AppStatus(user_id, chat_id, batch, total, speed)
+         - MediaBatch(idx, files: tuple[Path,...])
+
+  2.5  src/girgitton/core/logging_setup.py
+         - setup_logging(name, level, json=True)
+         - SecretFilter — `***` qatorlarini bot_token / api_hash / api_secret
+                          regex bo'yicha tozalaydi
+         - FileHandler ~/.girgitton/girgitton.log (RotatingFileHandler 10 MB x 5)
+
+  2.6  Unit testlar (tests/unit/):
+         test_config.py — sirlar maskalanadi
+         test_models.py — frozen, hashable
+
+DoD:
+  - mypy --strict src/girgitton/core OK
+  - pytest tests/unit/test_config.py test_models.py OK
+
+Xavfsizlik:
+  - SecretStr __repr__ "***"
+  - logging filter — har LogRecord ichidan tokenlarni tozalaydi
+
+================================================================================
+BOSQICH 3  —  STORAGE QATLAMI (REDIS + JSON FALLBACK)
+================================================================================
+Maqsad: Bir interfeys — ikki adapter, atomik yozish, Repository pattern.
+
+TZ:
+  3.1  src/girgitton/storage/base.py — Protocol:
+         class StorageRepository(Protocol):
+             async def init(self) -> None: ...
+             async def get(self, key) -> str|None: ...
+             async def set(self, key, value, ttl=None) -> None: ...
+             async def delete(self, key) -> None: ...
+             async def hset/hget/hdel/hgetall(...) -> ...
+             async def sadd/srem/smembers(...) -> ...
+
+  3.2  src/girgitton/storage/redis_store.py
+         - aioredis ulanish
+         - PingCheck startupda
+         - retry 3x exponential backoff
+
+  3.3  src/girgitton/storage/json_store.py
+         - ~/.girgitton/state.json (atomic write: tempfile + rename)
+         - asyncio.Lock concurrency uchun
+         - threading.Lock cross-thread (App + bot bir loopda emas)
+
+  3.4  src/girgitton/storage/factory.py
+         - get_storage(settings) -> StorageRepository
+         - REDIS_URL bo'lsa Redis, aks holda JSON
+
+  3.5  Domain-uslub helperlar (storage __init__):
+         - save_pair_code(code, payload, ttl=300)
+         - consume_pair_code(code) -> dict|None
+         - add_active_group / remove / list
+         - allowed_users get/add/remove
+         - app_status save/load (TTL 300)
+
+  3.6  Unit testlar:
+         test_storage_json.py — atomic write, concurrency
+         test_storage_redis.py (skip if no REDIS_URL)
+
+DoD:
+  - 80% coverage ushbu modul uchun
+  - Redis o'chsa JSON fallback ishlaydi (integration test)
+
+Xavfsizlik:
+  - JSON fayl 0600 permission
+  - state.json hech qachon log ga chiqmaydi
+
+================================================================================
+BOSQICH 4  —  BOT QISMI (TELEGRAM HANDLERLAR + HTTP API)
+================================================================================
+Maqsad: Railway da ishlaydigan, /pair, /status, /stop... va aiohttp API.
+
+TZ:
+  4.1  src/girgitton/bot/client.py
+         - Telethon TelegramClient (bot mode) factory
+         - Lifecycle (start/disconnect)
+
+  4.2  src/girgitton/bot/handlers/decorators.py
+         - @owner_only, @allowed_only, @group_only, @private_only
+         - Reusable: handler signature `(event: NewMessage.Event) -> None`
+
+  4.3  src/girgitton/bot/handlers/help.py
+         - /start, /help, /download
+
+  4.4  src/girgitton/bot/handlers/pairing.py
+         - /pair: pair code (6 char A-Z0-9) -> Storage TTL 5 min
+         - /unpair, /groups
+         - Brute-force lock: per-user 10/min
+
+  4.5  src/girgitton/bot/handlers/status.py
+         - /status — Storage da app_status'ni o'qiydi, progress bar emoji
+         - /stop — set_stop_command(user_id) (in-memory + storage TTL 60s)
+
+  4.6  src/girgitton/bot/handlers/access.py
+         - /allow, /disallow, /allowed (faqat owner)
+
+  4.7  src/girgitton/bot/api/middleware.py
+         - hmac_middleware: X-Signature + X-Timestamp tekshiradi
+         - rate_limit_middleware: per-IP 60/min
+         - error_middleware: domen xatolar -> JSON 4xx/5xx
+
+  4.8  src/girgitton/bot/api/routes.py
+         - GET  /health
+         - GET  /auto-pair  (faqat 127.0.0.1)
+         - POST /pair       (kod tekshirish, credentials qaytarish)
+         - GET  /groups     (HMAC)
+         - POST /status     (HMAC) — AppStatus DTO valid
+         - GET  /task       (HMAC) — stop signalini qaytaradi
+
+  4.9  src/girgitton/bot/api/server.py
+         - build_app() -> aiohttp.web.Application
+         - Middleware order: error -> rate_limit -> hmac -> route
+
+  4.10 src/girgitton/bot/__main__.py
+         - asosiy entry: client.start + api server bir loopda
+         - graceful shutdown (SIGTERM)
+
+  4.11 Integration testlar:
+         - aiohttp.web TestServer
+         - /pair flow, /status HMAC, /task
+
+DoD:
+  - python -m girgitton.bot lokal .env bilan ishlaydi
+  - bot @ Telegram da javob beradi
+  - curl -i http://localhost:8080/health -> 200
+  - integration testlar yashil
+
+Xavfsizlik:
+  - HMAC compare_digest
+  - timestamp ±60s skew
+  - rate limit
+  - validation har route da (schemas.py)
+
+================================================================================
+BOSQICH 5  —  UPLOAD ENGINE (3 WORKER + RATE-LIMIT)
+================================================================================
+Maqsad: 5 ta fayl batch — bitta upload, ikki marta yuborish (media+document),
+        3 worker, FloodWait avto-tikla.
+
+TZ:
+  5.1  src/girgitton/app/upload/batch.py
+         - chunked(files, BATCH_SIZE)
+         - upload_batch(client, batch) -> list[InputDocument]
+                  (Telethon `client.upload_file` bilan)
+         - send_album_pair(client, chat, uploaded, idx, total):
+              - Avval force_document=False
+              - DELAY_BETWEEN_STEPS
+              - Keyin force_document=True (xuddi shu InputDocument)
+
+  5.2  src/girgitton/app/upload/rate_limit.py
+         - SpeedTracker(window=3) — oxirgi 3 batch tezlik o'rta
+         - should_rotate(...) -> bool (3 mezon: count|time|speed)
+         - handle_flood_wait(exc, dialog_cb) -> async sleep + retry
+
+  5.3  src/girgitton/app/upload/worker_pool.py
+         - GlobalWorkerPool(api_id, api_hash, bot_token, n=3)
+         - asyncio.Queue
+         - har worker o'z TelegramClient (session=worker_{i})
+         - on_throttle callback
+
+  5.4  src/girgitton/app/upload/engine.py
+         - UploadEngine(loop)
+         - run(group_folders, notify, on_progress, on_throttle)
+         - per-group round-robin queue
+         - stop() flag
+
+  5.5  src/girgitton/app/upload/reuse_cache.py (ixtiyoriy v3.0)
+         - InputDocument by file_hash cache (resume support)
+
+  5.6  Unit testlar:
+         test_batch.py (chunked, send_album_pair mocklangan client)
+         test_rate_limit.py (SpeedTracker)
+
+DoD:
+  - 100 ta fayl bilan smoke test (3 worker)
+  - FloodWait simulyatsiyasida engine to'xtab kutadi
+  - Albom tartibi qat'iy: media oldin, document keyin
+
+Xavfsizlik:
+  - bot_token har worker uchun bir xil — jurnalga yozilmaydi
+  - session fayllar ~/.girgitton/sessions/ (0700)
+
+================================================================================
+BOSQICH 6  —  DESKTOP APP (CUSTOMTKINTER)
+================================================================================
+Maqsad: Foydalanuvchi UI — login, asosiy oyna, throttle dialog.
+
+TZ:
+  6.1  src/girgitton/app/config_store.py
+         - ~/.girgitton/credentials.enc (Fernet)
+         - Fernet kalit OS keyring (winreg/keychain/keyring)
+         - load() -> dict|None,  save(cfg) -> None,  clear()
+
+  6.2  src/girgitton/app/api_client.py
+         - APIClient(api_url, api_secret, user_id)
+         - HMAC X-Signature + X-Timestamp
+         - poll_loop (5s) — /status POST + /task GET
+         - set_stop_callback
+
+  6.3  src/girgitton/app/deeplink.py
+         - register_protocol() — Win/macOS
+         - parse_deep_link(url) -> (code, server)
+
+  6.4  src/girgitton/app/gui/window.py — App class:
+         - mainloop, async loop bridge (run_async, ui_callback)
+         - frame switching login<->main
+         - on_close
+
+  6.5  src/girgitton/app/gui/login_frame.py
+         - Auto-pair tugma (lokal)
+         - Pair kod kiritish
+         - Status label, deep link parse
+
+  6.6  src/girgitton/app/gui/main_frame.py
+         - Guruhlar ro'yxati (scrollable)
+         - Drag-drop papka (tkinterdnd2)
+         - Progress bar + tezlik
+         - Boshlash/To'xtatish
+         - Log box
+
+  6.7  src/girgitton/app/gui/throttle_dialog.py
+         - Countdown taymer
+         - Hozir qayta urinish / To'xtatish
+
+  6.8  src/girgitton/app/__main__.py
+         - logging setup
+         - register_protocol (faqat Win)
+         - asyncio thread + Tk mainloop bridge
+
+DoD:
+  - .exe build'da to'liq oqim ishlaydi
+  - throttle simulyatsiyasi dialog ochadi
+  - exit/relog cycle credentials sof tozalaydi
+
+Xavfsizlik:
+  - Fernet kalit OS keyring
+  - credentials.enc 0600 (Win — DPAPI)
+  - log faylda tokenlar yo'q
+
+================================================================================
+BOSQICH 7  —  TESTLAR + CI
+================================================================================
+Maqsad: Sifat darvozasi — har commitdan oldin avtotest.
+
+TZ:
+  7.1  tests/unit/* — 80% qamrov
+  7.2  tests/integration/test_api_routes.py — to'liq /pair flow
+  7.3  tests/integration/test_pairing_flow.py — pair → /pair → cred saqlash
+  7.4  tests/e2e/test_smoke.py — bot ishga tushadi va /health beradi
+  7.5  conftest.py — fixtures: tempdir, fake redis, fake telethon
+  7.6  .github/workflows/ci.yml:
+         - ruff, mypy, pytest --cov, bandit, pip-audit
+  7.7  pre-commit hook fayli (.pre-commit-config.yaml)
+
+DoD:
+  - GitHub Actions yashil
+  - cov ≥ 80%
+  - bandit zero high
+
+================================================================================
+BOSQICH 8  —  DEPLOY (RAILWAY) + BUILD (PYINSTALLER)
+================================================================================
+Maqsad: Bot Railway'da ishlasin, App .exe / .app / .bin qilib paketlasin.
+
+TZ:
+  8.1  deploy/railway.toml — startCommand = "python -m girgitton.bot"
+  8.2  deploy/nixpacks.toml — providers = ["python"]
+  8.3  deploy/Dockerfile (alternativ konteyner)
+  8.4  deploy/docker-compose.yml — lokal Redis + bot
+  8.5  scripts/build_app.py + scripts/package.spec
+       (PyInstaller, hidden imports, icon, deep link plist)
+  8.6  .github/workflows/release.yml — tag push → matrix build → release
+
+DoD:
+  - Railway smoke deploy yashil
+  - Win .exe ishlaydi (qo'lda test)
+  - Mac/Linux build artefakt yaratiladi
+
+Xavfsizlik:
+  - Dockerfile non-root user
+  - .exe digital signature (kelajakda)
+
+================================================================================
+BOSQICH 9  —  HUJJATLAR
+================================================================================
+Maqsad: Yangi foydalanuvchi 30 daqiqada ishga tushadigan aniq yo'riqnoma.
+
+TZ:
+  9.1  CLAUDE.md — yangilash (yangi struktura)
+  9.2  docs/architecture.md — diagrammalar (mermaid)
+  9.3  docs/api-reference.md — har endpoint
+  9.4  docs/security.md — tahdid modeli, HMAC misol
+  9.5  docs/onboarding.md — bot yaratish, .env, deploy
+  9.6  docs/runbook.md — incident playbook
+  9.7  README.md — qisqa, badge, quick start
+
+DoD:
+  - Yangi foydalanuvchi onboarding.md bo'yicha botni ishga tushira oladi
+
+================================================================================
+BOSQICH 10 —  YAKUNIY VERIFIKATSIYA
+================================================================================
+Maqsad: Sifat darvozasi — sintaksis, importlar, smoke run.
+
+TZ:
+  10.1 ruff check src/ tests/  -> zero error
+  10.2 mypy --strict src/girgitton -> zero error
+  10.3 pytest -q  -> all green
+  10.4 python -c "import girgitton.bot, girgitton.app, girgitton.core"
+  10.5 python -m girgitton.bot --check (5s ishlaydi va exit)
+  10.6 bajarildi.txt — barcha bosqichlar belgilangan
+  10.7 git status toza, README badge yashil
+
+DoD:
+  - 0 hatolik / ogohlantirish kritik darajada
+  - bajarildi.txt to'liq
+  - project.md va jarayon.txt sinxron
+
+================================================================================
+BOSQICH 11 —  MULTI-TENANT REDESIGN (v3.1)
+================================================================================
+Maqsad: /pair'siz UX, har user uchun izolyatsiyalangan guruh ro'yxati,
+        token-based App↔Bot ulanishi, ChatAction-driven group registry.
+
+11.1  Storage:
+        - active_groups → active_groups:<owner_id> (per-owner hash)
+        - pair_code* → connect_token:<token> {user_id, created_at}
+        - enrolled_users (set) — /start yuborganlar audit
+        - remove_group_from_all_owners(group_id) — ChatAction tozalash
+
+11.2  Bot handlerlar:
+        - pairing.py o'chirildi
+        - enrollment.py qo'shildi:
+          • /start [token] — token bo'lsa: bind_connect_token; aks holda welcome
+          • /here (guruhda) — add_active_group(sender_id, ...)
+          • /unhere (guruhda) — remove_active_group(sender_id, chat_id)
+          • /groups — shu user'ning per-owner ro'yxati
+          • ChatAction listener — bot kicked → remove_group_from_all_owners
+
+11.3  HTTP API:
+        - /pair, /auto-pair olib tashlandi
+        - POST /connect-init {token} → {t_me_url}
+        - GET /connect-status?token → {ready, user_id}
+        - POST /connect-claim {token} → {credentials, user_id, groups}
+        - GET /groups?user_id (HMAC) — per-owner
+
+11.4  App:
+        - LoginFrame o'chirildi
+        - connect_flow.py: token gen → init → webbrowser.open(t.me/?start=) → poll → claim
+        - gui/connect_dialog.py: modal + countdown
+        - window.py: bootstrap (cred bor → Main; yo'q → connect)
+
+11.5  MainFrame:
+        - cred ichidagi static groups o'rniga GET /groups dinamik
+        - 30s auto-refresh (Tk after)
+        - "🔄 Yangilash" tugmasi (manual refresh)
+        - logout → bootstrap (yangi connect)
+
+11.6  Multi-tenant invariantlar:
+        - A va B bir guruhga /here → har biri o'z ro'yxatiga qo'shadi
+        - GET /groups?user_id=A faqat A'niki, B'niki ko'rinmaydi
+        - app_status (user_id, chat_id) — alohida saqlanadi
+        - stop_signal (user_id) — alohida
+
+11.7  Testlar:
+        - test_storage_json.py: per-owner isolation, connect_token CRUD
+        - test_api_routes.py: connect oqimi, /groups HMAC + per-owner
+        - test_smoke.py: import yangi modullar
+        - 97 test yashil
+
+DoD:
+  ✅ ruff zero error, pytest 97/97, coverage 83.72%
+  ✅ Bot va App lokalda smoke test (qo'lda sinaladi)
+
+================================================================================
+END
+================================================================================

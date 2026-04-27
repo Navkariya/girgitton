@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(python -m girgitton.bot:*)",
+      "Bash(python -m girgitton.app:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff check:*)",
+      "Bash(ruff format:*)",
+      "Bash(mypy:*)",
+      "Bash(bandit:*)",
+      "Bash(pip install:*)",
+      "Bash(railway:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "ruff format --quiet \"$FILE_PATH\" 2>/dev/null || true",
+        "description": "Auto-format Python files after edit"
+      }
+    ]
+  },
+  "env": {
+    "PYTHONPATH": "src"
+  }
+}

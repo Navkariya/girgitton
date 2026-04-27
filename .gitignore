@@ -1,0 +1,57 @@
+# ─── Maxfiy ma'lumotlar (HECH QACHON commit qilinmasin) ─────────────────────
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+
+# ─── Telegram sessiyalar ────────────────────────────────────────────────────
+*.session
+*.session-journal
+
+# ─── Python ─────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.venv2/
+venv/
+env/
+.tox/
+.eggs/
+*.egg-info/
+*.egg
+
+# ─── Test / lint cache ──────────────────────────────────────────────────────
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# ─── Build artefaktlari ─────────────────────────────────────────────────────
+build/
+dist/
+*.spec.bak
+
+# ─── Loglar ─────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ─── Lokal app config (Fernet shifrlangan) ──────────────────────────────────
+.girgitton_config.json
+
+# ─── IDE ────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+
+# ─── OS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Loyiha xos ─────────────────────────────────────────────────────────────
+_archive/
+.claude/settings.local.json
