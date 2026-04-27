@@ -37,17 +37,19 @@ logger = logging.getLogger(__name__)
 
 
 WELCOME_TEXT = """
-🐈 **Girgitton v3.1** — Telegram media auto-sender
+🐈 **Girgitton v3.2** — Telegram media auto-sender
 
 Salom! Botdan foydalanish:
 
-1. Desktop App ni oching — App avtomatik ulanish so'rab Telegramga yuboradi
-2. Guruhga botni qo'shing va admin qiling
-3. Guruhda `/here` yuboring — shu guruh sizning App ro'yxatingizga qo'shiladi
-4. App'da papka tanlang va ▶️ Boshlash
+1. `/download` — Desktop App ni yuklab oling (Win/Mac/Linux)
+2. App ni oching — Telegramda START tugmasini bosing → avtomatik ulanadi
+3. Guruhga botni qo'shing va admin qiling
+4. Guruhda `/here` yuboring — shu guruh sizning App ro'yxatingizga qo'shiladi
+5. App'da papka tanlang va ▶️ Boshlash
 
 **Buyruqlar:**
-• `/start`              — yordam
+• `/start`              — ushbu yordam
+• `/download`           — Desktop App yuklab olish
 • `/here` (guruhda)     — guruhni faol ro'yxatga qo'shish
 • `/unhere` (guruhda)   — olib tashlash
 • `/groups`             — sizning guruhlar ro'yxati
