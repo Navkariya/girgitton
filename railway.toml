@@ -1,0 +1,14 @@
+# Railway deploy konfiguratsiyasi (root)
+# Foydalanish: https://railway.app -> Deploy from GitHub Repo -> Navkariya/girgitton
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python -m girgitton.bot"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+numReplicas = 1
+sleepApplication = false

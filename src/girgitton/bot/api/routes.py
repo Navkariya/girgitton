@@ -60,7 +60,9 @@ def make_routes(settings: Settings, storage: StorageRepository) -> web.RouteTabl
 
     @routes.get("/health")
     async def health(_: web.Request) -> web.Response:
-        return web.json_response({"ok": True, "service": "girgitton", "version": "3.1.0"})
+        from girgitton import __version__
+
+        return web.json_response({"ok": True, "service": "girgitton", "version": __version__})
 
     # ─── Connect oqimi (token-based) ────────────────────────────────────────
 

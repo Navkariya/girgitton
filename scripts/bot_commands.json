@@ -1,0 +1,13 @@
+{
+  "commands": [
+    {"command": "start", "description": "Botni ishga tushirish va yordam"},
+    {"command": "download", "description": "Desktop App yuklab olish - Win/Mac/Debian"},
+    {"command": "help", "description": "To'liq yordam matni"},
+    {"command": "here", "description": "Guruhni faol royhatga qoshish - guruhda"},
+    {"command": "unhere", "description": "Guruhni olib tashlash - guruhda"},
+    {"command": "groups", "description": "Sizning faol guruhlar royhati"},
+    {"command": "status", "description": "Yuklash holati"},
+    {"command": "stop", "description": "Yuklashni toxtatish"},
+    {"command": "resume", "description": "Saqlangan joydan davom ettirish"}
+  ]
+}

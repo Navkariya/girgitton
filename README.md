@@ -137,10 +137,18 @@ bandit -r src/ -ll
 
 ## 🚢 Deploy
 
-**Bot (Railway):**
+### Bot — Railway
+
+1. https://railway.app → New Project → Deploy from GitHub Repo → `Navkariya/girgitton`
+2. Variables: `API_ID`, `API_HASH`, `BOT_TOKEN`, `BOT_USERNAME`, `OWNER_ID`, `API_SECRET`
+3. (Tavsiya) Add Plugin → Database → Redis (auto-injected `REDIS_URL`)
+4. `git push origin main` → auto-deploy via Nixpacks
+
+To'liq qo'llanma: [docs/railway-deploy.md](docs/railway-deploy.md)
+
 ```bash
-git push origin main      # Auto-deploy via Nixpacks
 curl https://<your>.railway.app/health
+# {"ok": true, "service": "girgitton", "version": "3.2.0"}
 ```
 
 **Desktop App (PyInstaller):**

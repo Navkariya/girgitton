@@ -101,8 +101,8 @@ class MainFrame(ctk.CTkFrame):
             width=160,
             height=42,
             font=ctk.CTkFont(size=14, weight="bold"),
-            fg_color="#f2f5f3",
-            hover_color="#229954",
+            fg_color="#229954",
+            hover_color="#f2f5f3",
             state="disabled",
             command=lambda: self._on_start(force_resume=True),
         )
@@ -113,8 +113,8 @@ class MainFrame(ctk.CTkFrame):
             text="⏹  To'xtatish",
             width=130,
             height=42,
-            fg_color="#f2f5f3",
-            hover_color="#c0392b",
+            fg_color="#c0392b",
+            hover_color="#f2f5f3",
             state="disabled",
             command=self._on_stop,
         )
