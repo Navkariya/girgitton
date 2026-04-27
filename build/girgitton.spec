@@ -4,12 +4,18 @@ from pathlib import Path
 
 ROOT = Path(SPECPATH).parent
 
+import tkinterdnd2
+import os
+
+tkdnd_path = os.path.join(os.path.dirname(tkinterdnd2.__file__), 'tkdnd')
+
 a = Analysis(
     [str(ROOT / "app" / "__main__.py")],
     pathex=[str(ROOT)],
     binaries=[],
     datas=[
         (str(ROOT / "app" / "assets"), "assets"),
+        (tkdnd_path, "tkinterdnd2/tkdnd"),
     ],
     hiddenimports=[
         "customtkinter",
@@ -18,6 +24,7 @@ a = Analysis(
         "asyncio",
         "tkinter",
         "tkinter.filedialog",
+        "tkinterdnd2",
     ],
     hookspath=[],
     hooksconfig={},

@@ -23,9 +23,12 @@ _WIDTH = 560
 _HEIGHT = 620
 
 
-class App(ctk.CTk):
+from tkinterdnd2 import TkinterDnD
+
+class App(ctk.CTk, TkinterDnD.DnDWrapper):
     def __init__(self, loop: asyncio.AbstractEventLoop, deep_link_url: Optional[str] = None) -> None:
         super().__init__()
+        self.TkdndVersion = TkinterDnD._require(self)
         self.loop = loop
         self._current_frame: Optional[ctk.CTkFrame] = None
         self._deep_link_url = deep_link_url

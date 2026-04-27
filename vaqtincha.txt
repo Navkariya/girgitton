@@ -26,7 +26,7 @@ Bu yerda `project2.md` dagi v2.1 bosqichlari asosida qilinadigan ishlar ro'yxati
 - [x] 3.4 v2.1.0 tag push, 3 platform build test
 
 ## 🟡 FAZA 4: Polish (So'nggi sayqal)
-- [x] 4.1 Drag & drop papka qo'shish (tkinter dnd) - ixtiyoriy (O'tkazib yuborildi)
+- [x] 4.1 Drag & drop papka qo'shish (tkinterdnd2 orqali amalga oshirildi)
 - [x] 4.2 Ikonkalarni to'g'rilash (Windows/Mac/Linux)
 - [x] 4.3 `.env.example` yangilash
 - [x] 4.4 `README.md` to'liq yangilash

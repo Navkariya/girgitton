@@ -31,9 +31,9 @@ def _register_windows_protocol() -> None:
         
         # PyInstaller orqali .exe dan ishlaganda exe yo'lini olish
         if getattr(sys, "frozen", False):
-            app_path = sys.executable
+            cmd_value = f'"{sys.executable}" "%1"'
         else:
-            app_path = sys.executable + f' "{sys.argv[0]}"'
+            cmd_value = f'"{sys.executable}" "{sys.argv[0]}" "%1"'
 
         key_path = r"Software\Classes\girgitton"
         with winreg.CreateKey(winreg.HKEY_CURRENT_USER, key_path) as key:
@@ -41,7 +41,7 @@ def _register_windows_protocol() -> None:
             winreg.SetValueEx(key, "URL Protocol", 0, winreg.REG_SZ, "")
             
             with winreg.CreateKey(key, r"shell\open\command") as cmd_key:
-                winreg.SetValue(cmd_key, "", winreg.REG_SZ, f'"{app_path}" "%1"')
+                winreg.SetValue(cmd_key, "", winreg.REG_SZ, cmd_value)
                 
     except Exception as exc:
         logging.getLogger("girgitton").debug("Windows reyestriga yozishda xatolik: %s", exc)

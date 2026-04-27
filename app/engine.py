@@ -127,11 +127,14 @@ class UploadEngine:
                 futures_map[fut] = (gid, batch_idx, total)
 
         # Progress kutish
-        for fut, (gid, batch_idx, total) in futures_map.items():
+        dones_by_group = {gid: 0 for gid in group_folders.keys()}
+        for fut in asyncio.as_completed(list(futures_map.keys())):
             try:
                 await fut
+                gid, batch_idx, total = futures_map[fut]
+                dones_by_group[gid] += 1
                 # Speed bu yerda hisoblanmaydi to'g'ridan to'g'ri, worker logidan chiqadi, vaqtincha 0
-                on_progress(gid, batch_idx, total, 0.0)
+                on_progress(gid, dones_by_group[gid], total, 0.0)
             except asyncio.CancelledError:
                 pass
 

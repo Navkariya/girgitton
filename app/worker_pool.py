@@ -76,6 +76,7 @@ async def _upload_batch_files(
 
     batch_names = ", ".join(f.name for f in batch)
     logger.info("W%d Qism %d/%d: %s", worker_id, batch_idx, total_batches, batch_names)
+    await notify(f"⏳ W{worker_id} Qism {batch_idx}/{total_batches} yuklanmoqda ({len(batch)} fayl)...")
 
     file_paths = [str(f) for f in batch]
     media_caption = f"📸 Qism {batch_idx}/{total_batches} — Media ({len(batch)} ta)"

@@ -76,8 +76,16 @@ class MainFrame(ctk.CTkFrame):
             var = ctk.StringVar(value="")
             self._group_vars[gid] = var
             
-            ctk.CTkEntry(row, textvariable=var, state="readonly", height=28).pack(side="left", expand=True, fill="x", padx=5)
+            entry = ctk.CTkEntry(row, textvariable=var, state="readonly", height=28)
+            entry.pack(side="left", expand=True, fill="x", padx=5)
             ctk.CTkButton(row, text="📂", width=30, command=lambda v=var: self._pick_folder(v)).pack(side="right")
+
+            try:
+                from tkinterdnd2 import DND_FILES
+                entry.drop_target_register(DND_FILES)
+                entry.dnd_bind('<<Drop>>', lambda e, v=var: self._on_drop(e, v))
+            except Exception as e:
+                logger.warning(f"Drag & Drop qo'shishda xatolik: {e}")
 
         # Tugmalar
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -140,6 +148,18 @@ class MainFrame(ctk.CTkFrame):
         if path:
             var.set(path)
             self._save_last_folders()
+
+    def _on_drop(self, event, var: ctk.StringVar) -> None:
+        import os
+        path = event.data
+        if path.startswith('{') and path.endswith('}'):
+            path = path[1:-1]
+        
+        if os.path.isdir(path):
+            var.set(path)
+            self._save_last_folders()
+        else:
+            self._log(f"⚠️ Faqat papka tashlash mumkin. Bu fayl: {path}")
 
     def _log(self, msg: str) -> None:
         self._log_box.configure(state="normal")
@@ -240,6 +260,9 @@ class MainFrame(ctk.CTkFrame):
         def on_progress(group_id: int, done: int, total: int, speed: float) -> None:
             self._api_client.update_status(done, total, speed, current_group=group_id)
             self._app.ui_callback(self._update_progress, group_id, done, total, speed)
+
+        # Boshlanishida statusni yangilab qo'yamiz (0%)
+        self._api_client.update_status(0, 1, 0.0, current_group=first_group)
 
         async def on_throttle(speed: float, wait_secs: int) -> None:
             self._app.ui_callback(self._show_throttle_dialog, speed, wait_secs)
