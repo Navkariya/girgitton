@@ -1,0 +1,11 @@
+# Auto-detect text files and force LF (cross-platform consistent CI)
+* text=auto eol=lf
+
+# Binary fayllar — eol o'zgartirmang
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
+*.session binary
+*.exe binary
+*.bin binary

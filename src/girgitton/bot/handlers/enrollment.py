@@ -88,8 +88,7 @@ def register_enrollment(
                 logger.info("Connect token bound: user=%s", sender_id)
                 return
             await event.reply(
-                "⚠️ Token yaroqsiz yoki muddati o'tgan.\n"
-                "App'da yangi ulanish urinishini bosing."
+                "⚠️ Token yaroqsiz yoki muddati o'tgan.\nApp'da yangi ulanish urinishini bosing."
             )
             return
 
@@ -131,8 +130,7 @@ def register_enrollment(
         groups = await list_active_groups(storage, sender_id)
         if not groups:
             await event.reply(
-                "ℹ️ Sizda faol guruhlar yo'q.\n"
-                "Botni guruhga qo'shib `/here` yuboring."
+                "ℹ️ Sizda faol guruhlar yo'q.\nBotni guruhga qo'shib `/here` yuboring."
             )
             return
         lines = "\n".join(f"• **{g.title}** `{g.id}`" for g in groups)
@@ -154,10 +152,7 @@ def register_enrollment(
             return
 
         # Bot kicked/left bo'lganida
-        was_removed = (
-            getattr(event, "user_kicked", False)
-            or getattr(event, "user_left", False)
-        )
+        was_removed = getattr(event, "user_kicked", False) or getattr(event, "user_left", False)
         if not was_removed:
             return
 

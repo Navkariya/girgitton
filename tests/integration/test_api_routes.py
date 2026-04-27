@@ -129,9 +129,7 @@ async def test_connect_status_missing_token_param(client: TestClient) -> None:
 # ─── /connect-claim ──────────────────────────────────────────────────────────
 
 
-async def test_connect_claim_returns_credentials(
-    client: TestClient, storage: JSONStorage
-) -> None:
+async def test_connect_claim_returns_credentials(client: TestClient, storage: JSONStorage) -> None:
     await init_connect_token(storage, "abcd1234", ttl=60)
     await bind_connect_token(storage, "abcd1234", user_id=99)
 
@@ -145,9 +143,7 @@ async def test_connect_claim_returns_credentials(
     assert isinstance(data["groups"], list)
 
 
-async def test_connect_claim_unbound_token(
-    client: TestClient, storage: JSONStorage
-) -> None:
+async def test_connect_claim_unbound_token(client: TestClient, storage: JSONStorage) -> None:
     await init_connect_token(storage, "abcd1234", ttl=60)
     resp = await client.post("/connect-claim", json={"token": "abcd1234"})
     assert resp.status == 403
@@ -198,9 +194,7 @@ async def test_groups_missing_user_id(client: TestClient) -> None:
 
 async def test_status_requires_hmac(client: TestClient) -> None:
     body = json.dumps({"user_id": 42}).encode()
-    resp = await client.post(
-        "/status", data=body, headers={"Content-Type": "application/json"}
-    )
+    resp = await client.post("/status", data=body, headers={"Content-Type": "application/json"})
     assert resp.status == 401
 
 
@@ -258,9 +252,7 @@ async def test_task_returns_resume_action(client: TestClient, storage: JSONStora
     assert data["action"] == "resume"
 
 
-async def test_task_stop_priority_over_resume(
-    client: TestClient, storage: JSONStorage
-) -> None:
+async def test_task_stop_priority_over_resume(client: TestClient, storage: JSONStorage) -> None:
     """Agar ikkala signal bor bo'lsa, stop yuqori prioritetli."""
     await set_stop_signal(storage, 42)
     await set_resume_signal(storage, 42)

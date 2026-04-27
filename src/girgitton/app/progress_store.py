@@ -151,7 +151,6 @@ def summarize() -> str:
     for p in progress.values():
         if not p.is_done:
             lines.append(
-                f"• Guruh `{p.group_id}` — {p.completed_batches}/{p.total_batches} "
-                f"({p.folder})"
+                f"• Guruh `{p.group_id}` — {p.completed_batches}/{p.total_batches} ({p.folder})"
             )
     return "\n".join(lines) if lines else "Tugatilmagan ish yo'q"

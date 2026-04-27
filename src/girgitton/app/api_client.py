@@ -23,9 +23,7 @@ StopCallback = Callable[[], Awaitable[None] | None]
 ResumeCallback = Callable[[], Awaitable[None] | None]
 
 
-async def fetch_groups(
-    server_url: str, api_secret: str, user_id: int
-) -> list[dict[str, Any]]:
+async def fetch_groups(server_url: str, api_secret: str, user_id: int) -> list[dict[str, Any]]:
     """`GET /groups?user_id=<>` (HMAC) — shu user'ning aktiv guruhlar ro'yxati."""
     url = f"{server_url.rstrip('/')}/groups?user_id={user_id}"
     body = b""

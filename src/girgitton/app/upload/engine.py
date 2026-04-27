@@ -139,9 +139,7 @@ class UploadEngine:
                     and 0 < sp.completed_batches < total
                 ):
                     skip = sp.completed_batches
-                    await notify(
-                        f"⏯ G{gid}: resume — {skip}/{total} batch o'tkazib yuboriladi"
-                    )
+                    await notify(f"⏯ G{gid}: resume — {skip}/{total} batch o'tkazib yuboriladi")
                 else:
                     await notify(
                         f"ℹ️ G{gid}: saqlangan progress mos kelmadi (papka o'zgargan?), "

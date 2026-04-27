@@ -39,9 +39,10 @@ async def init_connect(server_url: str, token: str) -> dict[str, Any]:
     url = f"{server_url.rstrip('/')}/connect-init"
     timeout = aiohttp.ClientTimeout(total=HTTP_REQUEST_TIMEOUT_SECONDS)
     try:
-        async with aiohttp.ClientSession(timeout=timeout) as sess, sess.post(
-            url, json={"token": token}
-        ) as resp:
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as sess,
+            sess.post(url, json={"token": token}) as resp,
+        ):
             return await resp.json()
     except Exception as exc:
         return {"error": f"connect-init: {exc}"}
@@ -66,9 +67,10 @@ async def claim_connect(server_url: str, token: str) -> dict[str, Any]:
     url = f"{server_url.rstrip('/')}/connect-claim"
     timeout = aiohttp.ClientTimeout(total=HTTP_REQUEST_TIMEOUT_SECONDS)
     try:
-        async with aiohttp.ClientSession(timeout=timeout) as sess, sess.post(
-            url, json={"token": token}
-        ) as resp:
+        async with (
+            aiohttp.ClientSession(timeout=timeout) as sess,
+            sess.post(url, json={"token": token}) as resp,
+        ):
             return await resp.json()
     except Exception as exc:
         return {"error": f"claim: {exc}"}

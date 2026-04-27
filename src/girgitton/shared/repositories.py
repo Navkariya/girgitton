@@ -105,31 +105,23 @@ def _groups_key(owner_id: int) -> str:
     return f"{_KEY_ACTIVE_GROUPS_PREFIX}:{owner_id}"
 
 
-async def add_active_group(
-    storage: StorageRepository, owner_id: int, group: ActiveGroup
-) -> None:
+async def add_active_group(storage: StorageRepository, owner_id: int, group: ActiveGroup) -> None:
     """Guruhni shu owner uchun aktiv ro'yxatga qo'shadi."""
     await storage.hset(_groups_key(owner_id), str(group.id), group.title)
 
 
-async def remove_active_group(
-    storage: StorageRepository, owner_id: int, group_id: int
-) -> None:
+async def remove_active_group(storage: StorageRepository, owner_id: int, group_id: int) -> None:
     """Guruhni shu owner ro'yxatidan olib tashlaydi."""
     await storage.hdel(_groups_key(owner_id), str(group_id))
 
 
-async def list_active_groups(
-    storage: StorageRepository, owner_id: int
-) -> tuple[ActiveGroup, ...]:
+async def list_active_groups(storage: StorageRepository, owner_id: int) -> tuple[ActiveGroup, ...]:
     """Shu owner uchun aktiv guruhlar ro'yxati."""
     raw = await storage.hgetall(_groups_key(owner_id))
     return tuple(ActiveGroup(id=int(gid), title=title) for gid, title in raw.items())
 
 
-async def remove_group_from_all_owners(
-    storage: StorageRepository, group_id: int
-) -> None:
+async def remove_group_from_all_owners(storage: StorageRepository, group_id: int) -> None:
     """Bot guruhdan o'chirilganida — barcha owner ro'yxatlaridan tozalaydi."""
     owners = await storage.smembers(_KEY_ENROLLED_USERS)
     for owner_str in owners:
@@ -179,18 +171,14 @@ async def load_app_status(
         return None
 
 
-async def latest_app_status(
-    storage: StorageRepository, user_id: int
-) -> AppStatus | None:
+async def latest_app_status(storage: StorageRepository, user_id: int) -> AppStatus | None:
     return await load_app_status(storage, user_id, chat_id=0)
 
 
 # ─── Rate limit / Brute force ───────────────────────────────────────────────
 
 
-async def hit_rate_limit(
-    storage: StorageRepository, key: str, *, window_seconds: int = 60
-) -> int:
+async def hit_rate_limit(storage: StorageRepository, key: str, *, window_seconds: int = 60) -> int:
     full_key = f"{_KEY_RATE_LIMIT_PREFIX}:{key}"
     return await storage.incr_with_ttl(full_key, window_seconds)
 
@@ -198,9 +186,7 @@ async def hit_rate_limit(
 # ─── App control signals (stop / resume) ────────────────────────────────────
 
 
-async def set_stop_signal(
-    storage: StorageRepository, user_id: int, *, ttl: int = 60
-) -> None:
+async def set_stop_signal(storage: StorageRepository, user_id: int, *, ttl: int = 60) -> None:
     await storage.set(f"stop:{user_id}", str(int(time.time())), ttl=ttl)
 
 
@@ -208,9 +194,7 @@ async def consume_stop_signal(storage: StorageRepository, user_id: int) -> bool:
     return (await storage.getdel(f"stop:{user_id}")) is not None
 
 
-async def set_resume_signal(
-    storage: StorageRepository, user_id: int, *, ttl: int = 60
-) -> None:
+async def set_resume_signal(storage: StorageRepository, user_id: int, *, ttl: int = 60) -> None:
     await storage.set(f"resume:{user_id}", str(int(time.time())), ttl=ttl)
 
 

@@ -143,10 +143,7 @@ class MainFrame(ctk.CTkFrame):
         if not groups:
             self._empty_label = ctk.CTkLabel(
                 self._groups_frame,
-                text=(
-                    "Faol guruh yo'q.\n"
-                    "Botni guruhga qo'shing va guruhda `/here` yuboring."
-                ),
+                text=("Faol guruh yo'q.\nBotni guruhga qo'shing va guruhda `/here` yuboring."),
                 justify="center",
             )
             self._empty_label.pack(pady=12)

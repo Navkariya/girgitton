@@ -46,7 +46,7 @@ class ConnectDialog(ctk.CTkToplevel):
             icon = getattr(self._app, "_icon_image", None)
             if icon is not None:
                 self.iconphoto(False, icon)  # type: ignore[arg-type]
-        except Exception:  # noqa: BLE001
+        except Exception:
             pass
 
     def _build_ui(self) -> None:

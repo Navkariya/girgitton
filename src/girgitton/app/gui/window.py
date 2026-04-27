@@ -62,10 +62,9 @@ class App(ctk.CTk):
         - Windows: .ico fayl (mavjud bo'lsa) iconbitmap orqali
         - Cross-platform fallback: PIL bilan .jpg → PhotoImage → iconphoto
         """
-        from pathlib import Path
-
         # Bundle ichida (PyInstaller `_MEIPASS`), repo strukturasi yoki cwd
         import sys
+        from pathlib import Path
 
         meipass = Path(getattr(sys, "_MEIPASS", "")) if getattr(sys, "frozen", False) else None
 
@@ -90,7 +89,7 @@ class App(ctk.CTk):
             if ico.exists():
                 try:
                     self.iconbitmap(str(ico))
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.debug("iconbitmap xatoligi: %s", exc)
                 else:
                     break
@@ -106,7 +105,7 @@ class App(ctk.CTk):
                     self._icon_image = ImageTk.PhotoImage(img)
                     self.iconphoto(True, self._icon_image)  # type: ignore[arg-type]
                     return
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.debug("PhotoImage iconi xatoligi: %s", exc)
                     return
 
