@@ -122,9 +122,32 @@ class App(ctk.CTk):
     def _bootstrap(self) -> None:
         cfg = config_store.load()
         if cfg and cfg.get("bot_token") and cfg.get("user_id"):
+            # Saqlangan API URL'dan foydalanamiz (Railway domeni saqlangan)
+            saved_url = cfg.get("api_url")
+            if saved_url:
+                self.server_url = saved_url
             self.show_main()
         else:
-            self._start_connect_flow()
+            # Cred yo'q — server URL'ni avval so'raymiz
+            saved_cfg = cfg or {}
+            saved_url = saved_cfg.get("api_url") or self.server_url
+            self._ask_server_url(default_url=saved_url)
+
+    def _ask_server_url(self, *, default_url: str = "") -> None:
+        """Server URL kiritish dialogini ko'rsatadi (Railway URL kiritish uchun)."""
+        from girgitton.app.gui.server_dialog import ServerURLDialog
+
+        ServerURLDialog(
+            self,
+            self,
+            on_submit=self._on_server_url_chosen,
+            on_cancel=self.destroy,
+            default_url=default_url,
+        )
+
+    def _on_server_url_chosen(self, url: str) -> None:
+        self.server_url = url
+        self._start_connect_flow()
 
     def _start_connect_flow(self) -> None:
         from girgitton.app.gui.connect_dialog import ConnectDialog
@@ -196,8 +219,14 @@ class App(ctk.CTk):
     def _show_error_and_retry(self, error: str) -> None:
         from tkinter import messagebox
 
-        if messagebox.askretrycancel("Ulanish xato", f"{error}\n\nQayta urinishni xohlaysizmi?"):
-            self._start_connect_flow()
+        msg = (
+            f"{error}\n\n"
+            f"Hozirgi server: {self.server_url}\n\n"
+            "Ha — boshqa server URL kiritish\n"
+            "Yo'q — chiqish"
+        )
+        if messagebox.askyesno("Ulanish xato", msg):
+            self._ask_server_url(default_url=self.server_url)
         else:
             self.destroy()
 
