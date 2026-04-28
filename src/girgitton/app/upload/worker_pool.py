@@ -142,8 +142,8 @@ class GlobalWorkerPool:
         flood_retry = FloodWaitRetry(max_retries=3)
         batches_done = 0
         rotation_started = now_monotonic()
-        last_rotate_at = 0.0  # cooldown — per-batch rotate'ni cheklash
-        ROTATE_COOLDOWN_SECONDS = 30.0
+        last_rotate_at = 0.0  # cooldown — bir batch ichida ikki rotate'ni oldini oladi
+        ROTATE_COOLDOWN_SECONDS = 5.0
 
         while True:
             item = await my_queue.get()
@@ -197,31 +197,24 @@ class GlobalWorkerPool:
                 tracker.reset()
                 rotation_started = now_monotonic()
             else:
-                # ─── Sessiya rotatsiyasi (4 mezon + cooldown + adaptive)
-                # Adaptive: agar avg(3) tezlik > 0.9 MB/s bo'lsa, yaxshi tarmoq —
-                # rotate kerak emas (per-batch fluctuation'ni ignore). Faqat count/time
-                # mezonlari ishlasin (15 batch yoki 5 daq.).
+                # ─── Strict rotation: <0.9 MB/s bo'lsa DARHOL "kernel"ni yangilaymiz
+                # User talabi: tezlik 0.9 dan past tushmasin — tushsa sessiya rotate.
+                # Cooldown 5s — bir batch ichida ikki rotate'ni oldini oladi.
                 now = now_monotonic()
                 elapsed = now - rotation_started
                 cooldown_elapsed = (now - last_rotate_at) >= ROTATE_COOLDOWN_SECONDS
-                healthy_avg = tracker.filled and tracker.average >= 0.9
-
-                if healthy_avg:
-                    # Yaxshi tarmoq — faqat count/time triggers
-                    should = (batches_done > 0 and batches_done %
-                              self._config.policy.rotate_after_n_batches == 0) or (
-                        elapsed >= self._config.policy.rotate_after_seconds
-                    )
-                else:
-                    # Sekin — to'liq 4-mezon
-                    should = self._config.policy.should_rotate(
-                        batches_done=batches_done,
-                        time_elapsed=elapsed,
-                        tracker=tracker,
-                        last_speed=speed,
-                    )
+                should = self._config.policy.should_rotate(
+                    batches_done=batches_done,
+                    time_elapsed=elapsed,
+                    tracker=tracker,
+                    last_speed=speed,
+                )
 
                 if should and cooldown_elapsed:
+                    if speed > 0 and speed < 0.9:
+                        await notify(
+                            f"⚠️ W{worker_id} tezlik {speed:.2f} MB/s < 0.9 — kernel yangilanmoqda"
+                        )
                     await self._rotate(worker_id, client, notify)
                     tracker.reset()
                     rotation_started = now_monotonic()
@@ -236,10 +229,10 @@ class GlobalWorkerPool:
                 await asyncio.sleep(self._config.delay_between_batches)
 
     async def _rotate(self, worker_id: int, client: TelegramClient, notify: NotifyFn) -> None:
-        logger.info("W%d sessiyani yangilamoqda", worker_id)
-        await notify(f"🔄 W{worker_id} sessiya yangilanmoqda")
+        logger.info("W%d sessiyani (kernel) yangilamoqda", worker_id)
+        await notify(f"🔄 W{worker_id} kernel yangilanmoqda")
         with suppress(Exception):
             await client.disconnect()  # type: ignore[attr-defined]
-        await asyncio.sleep(0.5)  # 2s -> 0.5s (4x tezroq rotate)
+        await asyncio.sleep(2.5)  # 0.5 + 2 = 2.5 (delaylarga +2 qo'shish)
         with suppress(Exception):
             await client.start(bot_token=self._config.bot_token)  # type: ignore[attr-defined]

@@ -16,10 +16,11 @@ MEDIA_EXTENSIONS: Final[frozenset[str]] = IMAGE_EXTENSIONS | VIDEO_EXTENSIONS
 # ─── Yuborish parametrlari ───────────────────────────────────────────────────
 BATCH_SIZE: Final[int] = 5  # bir albomda nechta fayl
 DEFAULT_WORKERS: Final[int] = 3
-MAX_WORKERS: Final[int] = 5  # Telethon bot session ban xavfidan himoya
+MAX_WORKERS: Final[int] = 3  # 3 ta worker (Telegram safety)
 
-DELAY_BETWEEN_STEPS: Final[float] = 0.3  # media album ↔ document album orasidagi
-DELAY_BETWEEN_BATCHES: Final[float] = 1.0  # batchlar orasidagi pauza
+# Hamma delaylarga +2s (Telegram'ga yumshoq, rate-limit'dan saqlanish)
+DELAY_BETWEEN_STEPS: Final[float] = 2.3  # 0.3 + 2 = 2.3 (media → document orasi)
+DELAY_BETWEEN_BATCHES: Final[float] = 3.0  # 1.0 + 2 = 3.0 (batchlar orasi)
 UPLOAD_PARALLELISM_PER_BATCH: Final[int] = 5  # bir batch ichida fayllar parallel
 
 # ─── Rotatsiya / Throttle ────────────────────────────────────────────────────
