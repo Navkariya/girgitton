@@ -60,27 +60,15 @@ async def test_send_album_pair_uploads_once_sends_twice(fake_files: tuple[Path, 
     assert media_files == doc_files == ["i0", "i1", "i2", "i3", "i4"]
 
 
-async def test_send_album_pair_first_caption_only(fake_files: tuple[Path, ...]) -> None:
+async def test_send_album_pair_blank_captions(fake_files: tuple[Path, ...]) -> None:
+    """v3.2.4: Telegram'da hech qanday caption matni qoldirmaymiz."""
     client = AsyncMock()
     client.upload_file.side_effect = ["i0", "i1", "i2", "i3", "i4"]
 
     batch = MediaBatch(idx=2, files=fake_files)
     await send_album_pair(client, chat_id=1, batch=batch, total_batches=5, delay_between_steps=0.0)
 
-    media_call = client.send_file.await_args_list[0]
-    captions = media_call.kwargs["caption"]
-    assert captions[0].startswith("📸")
-    assert all(c == "" for c in captions[1:])
-
-
-async def test_send_album_pair_includes_progress_in_caption(fake_files: tuple[Path, ...]) -> None:
-    client = AsyncMock()
-    client.upload_file.side_effect = ["i0", "i1", "i2", "i3", "i4"]
-
-    batch = MediaBatch(idx=3, files=fake_files)
-    await send_album_pair(client, chat_id=1, batch=batch, total_batches=7, delay_between_steps=0.0)
-
-    media_caption = client.send_file.await_args_list[0].kwargs["caption"][0]
-    doc_caption = client.send_file.await_args_list[1].kwargs["caption"][0]
-    assert "Qism 3/7" in media_caption
-    assert "Qism 3/7" in doc_caption
+    for call in client.send_file.await_args_list:
+        captions = call.kwargs["caption"]
+        assert all(c == "" for c in captions), "Hamma caption bo'sh bo'lishi kerak"
+        assert len(captions) == 5

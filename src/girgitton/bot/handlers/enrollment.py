@@ -14,6 +14,7 @@ import logging
 
 from telethon import TelegramClient, events
 
+from girgitton import __version__ as _VERSION
 from girgitton.bot.handlers.decorators import (
     EventT,
     _decorate_chain,
@@ -36,8 +37,8 @@ from girgitton.storage.base import StorageRepository
 logger = logging.getLogger(__name__)
 
 
-WELCOME_TEXT = """
-🐈 **Girgitton v3.2** — Telegram media auto-sender
+WELCOME_TEXT = f"""
+🐈 **Girgitton v{_VERSION}** — Telegram media auto-sender
 
 Salom! Botdan foydalanish:
 

@@ -75,30 +75,28 @@ async def send_album_pair(
       C) document album (fayl)         force_document=True
     """
     n = batch.size
-    media_caption = f"📸 Qism {batch.idx}/{total_batches} — Media ({n} ta)"
-    doc_caption = f"📁 Qism {batch.idx}/{total_batches} — Documents ({n} ta)"
+    # Telegram'da hech qanday caption matni qoldirmaymiz (toza media album)
+    blank_captions = [""] * n
 
     logger.info("Batch %d/%d: yuklash boshlanmoqda (parallel)", batch.idx, total_batches)
     uploaded = await upload_files_once(client, batch.files, parallelism=upload_parallelism)
 
-    # ─── A: media album ────────────────────────────────────────────────
-    captions = [media_caption] + [""] * (n - 1)
+    # ─── A: media album (preview) — captionsiz ────────────────────────
     await client.send_file(  # type: ignore[attr-defined]
         chat_id,
         uploaded,
-        caption=captions,
+        caption=blank_captions,
         force_document=False,
     )
     logger.debug("Batch %d: media album OK", batch.idx)
 
     await asyncio.sleep(delay_between_steps)
 
-    # ─── B: document album ─────────────────────────────────────────────
-    captions = [doc_caption] + [""] * (n - 1)
+    # ─── B: document album (fayl) — captionsiz ────────────────────────
     await client.send_file(  # type: ignore[attr-defined]
         chat_id,
         uploaded,
-        caption=captions,
+        caption=blank_captions,
         force_document=True,
     )
     logger.info("Batch %d/%d: document album OK ✓", batch.idx, total_batches)

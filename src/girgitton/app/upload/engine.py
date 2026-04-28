@@ -221,16 +221,22 @@ class UploadEngine:
                 if ok:
                     done_per_group[gid] += 1
                     on_progress(gid, done_per_group[gid], total, 0.0)
+                    # Progress save'ni thread'ga uzatamiz — fayl I/O loopni bloklamaydi
                     folder_str = str(group_folders.get(gid, ""))
-                    progress_store.save_progress(
-                        progress_store.GroupProgress(
-                            group_id=gid,
-                            folder=folder_str,
-                            folder_hash=progress_store.folder_signature(folder_str),
-                            completed_batches=done_per_group[gid],
-                            total_batches=total,
+                    save_task = asyncio.create_task(
+                        asyncio.to_thread(
+                            progress_store.save_progress,
+                            progress_store.GroupProgress(
+                                group_id=gid,
+                                folder=folder_str,
+                                folder_hash=progress_store.folder_signature(folder_str),
+                                completed_batches=done_per_group[gid],
+                                total_batches=total,
+                            ),
                         )
                     )
+                    self._bg_tasks.add(save_task)
+                    save_task.add_done_callback(self._bg_tasks.discard)
 
         await pool.stop()
         self._pool = None

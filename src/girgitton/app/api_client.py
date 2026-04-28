@@ -23,8 +23,15 @@ StopCallback = Callable[[], Awaitable[None] | None]
 ResumeCallback = Callable[[], Awaitable[None] | None]
 
 
-async def fetch_groups(server_url: str, api_secret: str, user_id: int) -> list[dict[str, Any]]:
-    """`GET /groups?user_id=<>` (HMAC) — shu user'ning aktiv guruhlar ro'yxati."""
+async def fetch_groups(
+    server_url: str, api_secret: str, user_id: int
+) -> list[dict[str, Any]] | None:
+    """`GET /groups?user_id=<>` (HMAC).
+
+    Returns:
+        list — muvaffaqiyatli javob (bo'sh ham mumkin)
+        None — tarmoq xatosi (UI eski ro'yxatni saqlab qoladi)
+    """
     url = f"{server_url.rstrip('/')}/groups?user_id={user_id}"
     body = b""
     headers: dict[str, str] = {}
@@ -38,14 +45,17 @@ async def fetch_groups(server_url: str, api_secret: str, user_id: int) -> list[d
             aiohttp.ClientSession(timeout=timeout) as sess,
             sess.get(url, headers=headers) as resp,
         ):
+            if resp.status >= 400:
+                logger.debug("/groups HTTP %s", resp.status)
+                return None
             data = await resp.json()
             if data.get("ok"):
                 groups = data.get("groups", [])
                 return list(groups) if isinstance(groups, list) else []
-            return []
+            return None
     except Exception as exc:
         logger.debug("/groups xatoligi: %s", exc)
-        return []
+        return None
 
 
 class APIClient:

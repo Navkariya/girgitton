@@ -56,9 +56,11 @@ class MainFrame(ctk.CTkFrame):
     def _build_ui(self) -> None:
         header = ctk.CTkFrame(self, fg_color="transparent")
         header.pack(fill="x", pady=(0, 10))
+        from girgitton import __version__ as _v
+
         ctk.CTkLabel(
             header,
-            text="🐈 Girgitton v3.1",
+            text=f"🐈 Girgitton v{_v}",
             font=ctk.CTkFont(size=22, weight="bold"),
         ).pack(side="left")
         ctk.CTkButton(
@@ -221,7 +223,7 @@ class MainFrame(ctk.CTkFrame):
         if not api_url or not user_id:
             return
 
-        async def _fetch() -> list[dict[str, Any]]:
+        async def _fetch() -> list[dict[str, Any]] | None:
             return await api_client.fetch_groups(api_url, api_secret, user_id)
 
         fut = self._app.run_async(_fetch())
@@ -233,7 +235,12 @@ class MainFrame(ctk.CTkFrame):
                 logger.debug("group refresh error: %s", exc)
                 return
 
-            # cfg["groups"] ni yangilab qo'yamiz (next startup uchun)
+            # None — tarmoq xatosi: eski ro'yxatni saqlab qolamiz, UI'ga teginmaymiz
+            if groups is None:
+                logger.debug("group refresh: tarmoq xatosi, eski ro'yxat saqlanadi")
+                return
+
+            # Muvaffaqiyatli javob — hatto bo'sh bo'lsa ham yangilaymiz
             cfg2 = config_store.load() or {}
             cfg2["groups"] = groups
             config_store.save(cfg2)
@@ -318,9 +325,19 @@ class MainFrame(ctk.CTkFrame):
         else:
             self._log(f"⚠️ Faqat papka tashlanadi (bu fayl): {path}")
 
+    _LOG_MAX_LINES = 200  # log box'da saqlanuvchi maks. satr (qotishni oldini oladi)
+
     def _log(self, msg: str) -> None:
         self._log_box.configure(state="normal")
         self._log_box.insert("end", msg + "\n")
+        # Eskirgan satrlarni o'chirib turamiz — Tk ko'p matnda sekinlashadi
+        try:
+            line_count = int(self._log_box.index("end-1c").split(".")[0])
+            if line_count > self._LOG_MAX_LINES:
+                drop = line_count - self._LOG_MAX_LINES
+                self._log_box.delete("1.0", f"{drop + 1}.0")
+        except Exception:
+            pass
         self._log_box.see("end")
         self._log_box.configure(state="disabled")
 

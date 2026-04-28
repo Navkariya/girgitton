@@ -14,6 +14,7 @@ from typing import Any
 
 import customtkinter as ctk
 
+from girgitton import __version__ as _VERSION
 from girgitton.app import config_store, connect_flow
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-_TITLE = "Girgitton v3.1"
+_TITLE = f"Girgitton v{_VERSION}"
 _WIDTH = 600
 _HEIGHT = 660
 
