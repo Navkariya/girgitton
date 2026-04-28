@@ -203,54 +203,56 @@ class UploadEngine:
             f"▶️ Boshlandi: {self._settings.upload_workers} worker, {total_batches_all} batch jami"
         )
 
-        # ─── Eager submit: BARCHA batchlarni queue'ga (round-robin interleaved)
-        # Bu workerlar starvation'dan qutqaradi — 5 worker = 5x parallelism.
-        # Avval esa har vaqtda faqat 1 ta batch queue'da bo'lardi (effektiv 1x).
-        future_to_meta: dict[asyncio.Future[bool], tuple[int, int, int]] = {}
+        # ─── Sequential round-robin: w0 → w1 → w2 → w3 → w4 → w0 → ...
+        # Bir vaqtda faqat 1 ta batch ishlanadi (Telegram'da tartib qat'iy).
+        # Workerlar cycle bo'ladi — har biri navbatdagi batch'ni oladi (sessiya freshness).
         done_per_group = {gid: per_group_skipped.get(gid, 0) for gid in per_group_batches}
 
-        # Round-robin interleave (multi-group fairness uchun):
-        # G1[0], G2[0], G3[0], G1[1], G2[1], ...
+        # Round-robin interleave (multi-group fairness): G1[0], G2[0], G3[0], G1[1], ...
+        all_tasks: list[tuple[int, object]] = []
         max_len = max(len(b) for b in per_group_batches.values())
         for i in range(max_len):
             for gid, batches in per_group_batches.items():
                 if i < len(batches):
-                    batch = batches[i]
-                    fut = pool.submit(batch, gid, per_group_total[gid])
-                    future_to_meta[fut] = (gid, batch.idx, per_group_total[gid])
+                    all_tasks.append((gid, batches[i]))
 
         await notify(
-            f"📤 {len(future_to_meta)} batch queue'ga joylandi — "
-            f"{self._settings.upload_workers} worker parallel ishlamoqda"
+            f"📤 {len(all_tasks)} batch — {self._settings.upload_workers} worker "
+            f"round-robin (w0 → w1 → ... → w0)"
         )
 
-        while future_to_meta and not self._stop_requested:
-            done, _ = await asyncio.wait(future_to_meta.keys(), return_when=asyncio.FIRST_COMPLETED)
-            for fut in done:
-                gid, _batch_idx, total = future_to_meta.pop(fut)
-                try:
-                    ok = await fut
-                except Exception:
-                    ok = False
-                if ok:
-                    done_per_group[gid] += 1
-                    on_progress(gid, done_per_group[gid], total, 0.0)
-                    # Progress save'ni thread'ga uzatamiz — fayl I/O loopni bloklamaydi
-                    folder_str = str(group_folders.get(gid, ""))
-                    save_task = asyncio.create_task(
-                        asyncio.to_thread(
-                            progress_store.save_progress,
-                            progress_store.GroupProgress(
-                                group_id=gid,
-                                folder=folder_str,
-                                folder_hash=progress_store.folder_signature(folder_str),
-                                completed_batches=done_per_group[gid],
-                                total_batches=total,
-                            ),
-                        )
+        worker_count = pool.worker_count
+        for batch_idx, (gid, batch) in enumerate(all_tasks):
+            if self._stop_requested:
+                break
+
+            worker_idx = batch_idx % worker_count
+            await notify(f"⏳ Batch {batch_idx + 1}/{len(all_tasks)} → W{worker_idx}")
+
+            fut = pool.submit(batch, gid, per_group_total[gid], worker_idx=worker_idx)
+            try:
+                ok = await fut
+            except Exception:
+                ok = False
+
+            if ok:
+                done_per_group[gid] += 1
+                on_progress(gid, done_per_group[gid], per_group_total[gid], 0.0)
+                folder_str = str(group_folders.get(gid, ""))
+                save_task = asyncio.create_task(
+                    asyncio.to_thread(
+                        progress_store.save_progress,
+                        progress_store.GroupProgress(
+                            group_id=gid,
+                            folder=folder_str,
+                            folder_hash=progress_store.folder_signature(folder_str),
+                            completed_batches=done_per_group[gid],
+                            total_batches=per_group_total[gid],
+                        ),
                     )
-                    self._bg_tasks.add(save_task)
-                    save_task.add_done_callback(self._bg_tasks.discard)
+                )
+                self._bg_tasks.add(save_task)
+                save_task.add_done_callback(self._bg_tasks.discard)
 
         await pool.stop()
         self._pool = None

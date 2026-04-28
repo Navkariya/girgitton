@@ -68,9 +68,14 @@ class GlobalWorkerPool:
         self._n = max(1, min(config.workers, MAX_WORKERS))
         self._client_factory = client_factory
         self._clients: list[TelegramClient] = []
-        self._queue: asyncio.Queue[_UploadTask | None] = asyncio.Queue()
+        # Per-worker queue: round-robin tartib uchun (w0 → w1 → w2 → ...)
+        self._worker_queues: list[asyncio.Queue[_UploadTask | None]] = []
         self._tasks: list[asyncio.Task[None]] = []
         self._stop_flag = [False]
+
+    @property
+    def worker_count(self) -> int:
+        return self._n
 
     @property
     def stop_flag(self) -> list[bool]:
@@ -81,23 +86,34 @@ class GlobalWorkerPool:
             client = self._client_factory(i)
             await client.start(bot_token=self._config.bot_token)  # type: ignore[attr-defined]
             self._clients.append(client)
+            self._worker_queues.append(asyncio.Queue())
             logger.info("W%d ulandi", i)
 
     async def stop(self) -> None:
-        # Workerlarga sentinel yuborish
-        for _ in range(self._n):
-            await self._queue.put(None)
+        # Har worker'ga sentinel
+        for q in self._worker_queues:
+            await q.put(None)
         if self._tasks:
             await asyncio.gather(*self._tasks, return_exceptions=True)
         for c in self._clients:
             with suppress(Exception):
                 await c.disconnect()  # type: ignore[attr-defined]
         self._clients.clear()
+        self._worker_queues.clear()
         self._tasks.clear()
 
-    def submit(self, batch: MediaBatch, chat_id: int, total_batches: int) -> asyncio.Future[bool]:
+    def submit(
+        self,
+        batch: MediaBatch,
+        chat_id: int,
+        total_batches: int,
+        *,
+        worker_idx: int,
+    ) -> asyncio.Future[bool]:
+        """Aniq worker'ga batch yo'naltiradi (round-robin uchun)."""
+        idx = worker_idx % self._n
         task = _UploadTask(batch=batch, chat_id=chat_id, total_batches=total_batches)
-        self._queue.put_nowait(task)
+        self._worker_queues[idx].put_nowait(task)
         return task.future
 
     def request_stop(self) -> None:
@@ -121,6 +137,7 @@ class GlobalWorkerPool:
         on_throttle: ThrottleCallback | None,
     ) -> None:
         client = self._clients[worker_id]
+        my_queue = self._worker_queues[worker_id]
         tracker = SpeedTracker(window=3)
         flood_retry = FloodWaitRetry(max_retries=3)
         batches_done = 0
@@ -129,15 +146,15 @@ class GlobalWorkerPool:
         ROTATE_COOLDOWN_SECONDS = 30.0
 
         while True:
-            item = await self._queue.get()
+            item = await my_queue.get()
             if item is None:
-                self._queue.task_done()
+                my_queue.task_done()
                 return
 
             if self._stop_flag[0]:
                 if not item.future.done():
                     item.future.set_result(False)
-                self._queue.task_done()
+                my_queue.task_done()
                 continue
 
             # ─── Yuklash + ikki marta yuborish ───────────────────────────────
@@ -212,7 +229,7 @@ class GlobalWorkerPool:
 
             if not item.future.done():
                 item.future.set_result(ok)
-            self._queue.task_done()
+            my_queue.task_done()
 
             # ─── Batchlar orasidagi pauza ────────────────────────────────────
             if self._config.delay_between_batches > 0 and not self._stop_flag[0]:
