@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from girgitton.core.constants import (
+    LAST_BATCH_SPEED_THRESHOLD_MB_S,
     ROTATE_AFTER_N_BATCHES,
     ROTATE_AFTER_SECONDS,
     SPEED_DROP_THRESHOLD_MB_S,
@@ -50,22 +51,37 @@ class SpeedTracker:
 
 @dataclass(frozen=True, slots=True)
 class RotationPolicy:
-    """3 mezonli rotatsiya qoidasi."""
+    """4 mezonli rotatsiya qoidasi (v1/v2 ga moslashtirilgan):
+
+    1. Batch soni — har N batchdan keyin
+    2. Vaqt — N soniyadan keyin
+    3. Trend — avg(3 batch) past
+    4. Per-batch — oxirgi BITTA batch tezligi past (eng tezkor signal)
+    """
 
     rotate_after_n_batches: int = ROTATE_AFTER_N_BATCHES
     rotate_after_seconds: int = ROTATE_AFTER_SECONDS
     speed_drop_threshold: float = SPEED_DROP_THRESHOLD_MB_S
+    last_batch_speed_threshold: float = LAST_BATCH_SPEED_THRESHOLD_MB_S
     throttle_speed_limit: float = THROTTLE_SPEED_LIMIT_MB_S
     throttle_wait_seconds: int = THROTTLE_WAIT_SECONDS
 
     def should_rotate(
-        self, *, batches_done: int, time_elapsed: float, tracker: SpeedTracker
+        self,
+        *,
+        batches_done: int,
+        time_elapsed: float,
+        tracker: SpeedTracker,
+        last_speed: float = 0.0,
     ) -> bool:
         if batches_done > 0 and batches_done % self.rotate_after_n_batches == 0:
             return True
         if time_elapsed >= self.rotate_after_seconds:
             return True
-        return bool(tracker.filled and tracker.average < self.speed_drop_threshold)
+        if tracker.filled and tracker.average < self.speed_drop_threshold:
+            return True
+        # Per-batch tezkor reaksiya (v1/v2 da bor edi: <0.9 MB/s -> reconnect)
+        return bool(last_speed > 0 and last_speed < self.last_batch_speed_threshold)
 
     def should_throttle(self, *, last_speed: float) -> bool:
         return last_speed > 0 and last_speed < self.throttle_speed_limit

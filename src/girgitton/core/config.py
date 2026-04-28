@@ -16,11 +16,15 @@ from girgitton.core.constants import (
     APP_POLL_INTERVAL_SECONDS,
     DEFAULT_HTTP_PORT,
     DEFAULT_WORKERS,
+    DELAY_BETWEEN_BATCHES,
+    DELAY_BETWEEN_STEPS,
+    LAST_BATCH_SPEED_THRESHOLD_MB_S,
     ROTATE_AFTER_N_BATCHES,
     ROTATE_AFTER_SECONDS,
     SPEED_DROP_THRESHOLD_MB_S,
     THROTTLE_SPEED_LIMIT_MB_S,
     THROTTLE_WAIT_SECONDS,
+    UPLOAD_PARALLELISM_PER_BATCH,
 )
 from girgitton.core.errors import ConfigError
 
@@ -130,11 +134,15 @@ class Settings:
 
     # ─── Upload ─────────────────────────────────────────────────────────────
     upload_workers: int = DEFAULT_WORKERS
+    upload_parallelism: int = UPLOAD_PARALLELISM_PER_BATCH
     rotate_after_n_batches: int = ROTATE_AFTER_N_BATCHES
     rotate_after_seconds: int = ROTATE_AFTER_SECONDS
     speed_drop_threshold: float = SPEED_DROP_THRESHOLD_MB_S
+    last_batch_speed_threshold: float = LAST_BATCH_SPEED_THRESHOLD_MB_S
     throttle_speed_limit: float = THROTTLE_SPEED_LIMIT_MB_S
     throttle_wait_seconds: int = THROTTLE_WAIT_SECONDS
+    delay_between_steps: float = DELAY_BETWEEN_STEPS
+    delay_between_batches: float = DELAY_BETWEEN_BATCHES
     poll_interval_seconds: float = APP_POLL_INTERVAL_SECONDS
 
     # ─── Logging ────────────────────────────────────────────────────────────
@@ -167,11 +175,17 @@ class Settings:
             http_port=_env_int("PORT", DEFAULT_HTTP_PORT),
             redis_url=_env_str("REDIS_URL") or None,
             upload_workers=_env_int("UPLOAD_WORKERS", DEFAULT_WORKERS),
+            upload_parallelism=_env_int("UPLOAD_PARALLELISM", UPLOAD_PARALLELISM_PER_BATCH),
             rotate_after_n_batches=_env_int("ROTATE_AFTER_N_BATCHES", ROTATE_AFTER_N_BATCHES),
             rotate_after_seconds=_env_int("ROTATE_AFTER_SECONDS", ROTATE_AFTER_SECONDS),
             speed_drop_threshold=_env_float("SPEED_DROP_THRESHOLD", SPEED_DROP_THRESHOLD_MB_S),
+            last_batch_speed_threshold=_env_float(
+                "LAST_BATCH_SPEED_THRESHOLD", LAST_BATCH_SPEED_THRESHOLD_MB_S
+            ),
             throttle_speed_limit=_env_float("THROTTLE_SPEED_LIMIT", THROTTLE_SPEED_LIMIT_MB_S),
             throttle_wait_seconds=_env_int("THROTTLE_WAIT_SECONDS", THROTTLE_WAIT_SECONDS),
+            delay_between_steps=_env_float("DELAY_BETWEEN_STEPS", DELAY_BETWEEN_STEPS),
+            delay_between_batches=_env_float("DELAY_BETWEEN_BATCHES", DELAY_BETWEEN_BATCHES),
             log_level=_env_str("LOG_LEVEL", "INFO").upper() or "INFO",
             log_json=_env_bool("LOG_JSON", True),
         )

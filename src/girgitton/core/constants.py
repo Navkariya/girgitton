@@ -18,14 +18,19 @@ BATCH_SIZE: Final[int] = 5  # bir albomda nechta fayl
 DEFAULT_WORKERS: Final[int] = 3
 MAX_WORKERS: Final[int] = 5  # Telethon bot session ban xavfidan himoya
 
-DELAY_BETWEEN_STEPS: Final[float] = 1.0  # media album ↔ document album orasidagi
-DELAY_BETWEEN_BATCHES: Final[float] = 2.0  # batchlar orasidagi pauza
+DELAY_BETWEEN_STEPS: Final[float] = 0.3  # media album ↔ document album orasidagi
+DELAY_BETWEEN_BATCHES: Final[float] = 1.0  # batchlar orasidagi pauza
+UPLOAD_PARALLELISM_PER_BATCH: Final[int] = 5  # bir batch ichida fayllar parallel
 
 # ─── Rotatsiya / Throttle ────────────────────────────────────────────────────
 ROTATE_AFTER_N_BATCHES: Final[int] = 15
 ROTATE_AFTER_SECONDS: Final[int] = 300
-SPEED_DROP_THRESHOLD_MB_S: Final[float] = 0.10
-THROTTLE_SPEED_LIMIT_MB_S: Final[float] = 0.05
+# Avg(3 batch) tezligi shu ostiga tushsa rotate (sekin trend)
+SPEED_DROP_THRESHOLD_MB_S: Final[float] = 0.5
+# Oxirgi BITTA batch tezligi shu ostida bo'lsa darhol rotate (v1/v2 ga o'xshash)
+LAST_BATCH_SPEED_THRESHOLD_MB_S: Final[float] = 0.9
+# Throttle (FloodWait simulyatsiyasi) — uzoq kutish
+THROTTLE_SPEED_LIMIT_MB_S: Final[float] = 0.1
 THROTTLE_WAIT_SECONDS: Final[int] = 1800  # 30 daqiqa
 
 # ─── Pair code ───────────────────────────────────────────────────────────────

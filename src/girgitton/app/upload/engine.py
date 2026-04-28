@@ -169,6 +169,7 @@ class UploadEngine:
             rotate_after_n_batches=self._settings.rotate_after_n_batches,
             rotate_after_seconds=self._settings.rotate_after_seconds,
             speed_drop_threshold=self._settings.speed_drop_threshold,
+            last_batch_speed_threshold=self._settings.last_batch_speed_threshold,
             throttle_speed_limit=self._settings.throttle_speed_limit,
             throttle_wait_seconds=self._settings.throttle_wait_seconds,
         )
@@ -176,6 +177,9 @@ class UploadEngine:
             workers=self._settings.upload_workers,
             policy=policy,
             bot_token=self._settings.bot_token.get(),
+            delay_between_steps=self._settings.delay_between_steps,
+            delay_between_batches=self._settings.delay_between_batches,
+            upload_parallelism=self._settings.upload_parallelism,
         )
         pool = GlobalWorkerPool(config, client_factory=self._client_factory)
         self._pool = pool

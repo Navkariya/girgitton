@@ -50,6 +50,9 @@ class WorkerPoolConfig:
     workers: int = 3
     policy: RotationPolicy = field(default_factory=RotationPolicy)
     bot_token: str = ""
+    delay_between_steps: float = 0.3
+    delay_between_batches: float = 1.0
+    upload_parallelism: int = 5
 
 
 class GlobalWorkerPool:
@@ -135,24 +138,20 @@ class GlobalWorkerPool:
                 self._queue.task_done()
                 continue
 
-            # ─── Sessiya rotatsiyasi ─────────────────────────────────────────
-            elapsed = now_monotonic() - rotation_started
-            if self._config.policy.should_rotate(
-                batches_done=batches_done,
-                time_elapsed=elapsed,
-                tracker=tracker,
-            ):
-                await self._rotate(worker_id, client, notify)
-                tracker.reset()
-                rotation_started = now_monotonic()
-
             # ─── Yuklash + ikki marta yuborish ───────────────────────────────
             t0 = time.perf_counter()
             mb = item.batch.total_bytes / 1_048_576
             ok = True
             try:
                 await flood_retry.execute(
-                    lambda: send_album_pair(client, item.chat_id, item.batch, item.total_batches),
+                    lambda: send_album_pair(
+                        client,
+                        item.chat_id,
+                        item.batch,
+                        item.total_batches,
+                        delay_between_steps=self._config.delay_between_steps,
+                        upload_parallelism=self._config.upload_parallelism,
+                    ),
                     notify=notify,
                 )
             except Exception:
@@ -169,7 +168,7 @@ class GlobalWorkerPool:
                 f"{mb:.1f} MB / {elapsed_secs:.1f}s = {speed:.2f} MB/s"
             )
 
-            # ─── Throttle aniqlash ───────────────────────────────────────────
+            # ─── Throttle (juda past tezlik — FloodWait ga o'xshash) ─────────
             if self._config.policy.should_throttle(last_speed=speed):
                 logger.warning("W%d throttle: %.3f MB/s", worker_id, speed)
                 await wait_with_callback(
@@ -178,10 +177,26 @@ class GlobalWorkerPool:
                 await self._rotate(worker_id, client, notify)
                 tracker.reset()
                 rotation_started = now_monotonic()
+            else:
+                # ─── Sessiya rotatsiyasi (4 mezon, last_speed ham qatnashadi)
+                elapsed = now_monotonic() - rotation_started
+                if self._config.policy.should_rotate(
+                    batches_done=batches_done,
+                    time_elapsed=elapsed,
+                    tracker=tracker,
+                    last_speed=speed,
+                ):
+                    await self._rotate(worker_id, client, notify)
+                    tracker.reset()
+                    rotation_started = now_monotonic()
 
             if not item.future.done():
                 item.future.set_result(ok)
             self._queue.task_done()
+
+            # ─── Batchlar orasidagi pauza ────────────────────────────────────
+            if self._config.delay_between_batches > 0 and not self._stop_flag[0]:
+                await asyncio.sleep(self._config.delay_between_batches)
 
     async def _rotate(self, worker_id: int, client: TelegramClient, notify: NotifyFn) -> None:
         logger.info("W%d sessiyani yangilamoqda", worker_id)
