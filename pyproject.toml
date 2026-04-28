@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 # ─────────────────────────────────────────────────────────────────────────────
 [project]
 name = "girgitton"
-version = "3.3.2"
+version = "3.3.3"
 description = "Telegram media auto-sender — bot (Railway) + desktop app (local)."
 readme = "README.md"
 requires-python = ">=3.11"
