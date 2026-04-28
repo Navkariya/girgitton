@@ -180,18 +180,30 @@ class GlobalWorkerPool:
                 tracker.reset()
                 rotation_started = now_monotonic()
             else:
-                # ─── Sessiya rotatsiyasi (4 mezon + cooldown)
-                # Cooldown: oxirgi rotate'dan 30s o'tmasa qayta rotate qilmaymiz.
-                # Bu past tezlik bilan har batchda reconnect qilishni oldini oladi.
+                # ─── Sessiya rotatsiyasi (4 mezon + cooldown + adaptive)
+                # Adaptive: agar avg(3) tezlik > 0.9 MB/s bo'lsa, yaxshi tarmoq —
+                # rotate kerak emas (per-batch fluctuation'ni ignore). Faqat count/time
+                # mezonlari ishlasin (15 batch yoki 5 daq.).
                 now = now_monotonic()
                 elapsed = now - rotation_started
                 cooldown_elapsed = (now - last_rotate_at) >= ROTATE_COOLDOWN_SECONDS
-                should = self._config.policy.should_rotate(
-                    batches_done=batches_done,
-                    time_elapsed=elapsed,
-                    tracker=tracker,
-                    last_speed=speed,
-                )
+                healthy_avg = tracker.filled and tracker.average >= 0.9
+
+                if healthy_avg:
+                    # Yaxshi tarmoq — faqat count/time triggers
+                    should = (batches_done > 0 and batches_done %
+                              self._config.policy.rotate_after_n_batches == 0) or (
+                        elapsed >= self._config.policy.rotate_after_seconds
+                    )
+                else:
+                    # Sekin — to'liq 4-mezon
+                    should = self._config.policy.should_rotate(
+                        batches_done=batches_done,
+                        time_elapsed=elapsed,
+                        tracker=tracker,
+                        last_speed=speed,
+                    )
+
                 if should and cooldown_elapsed:
                     await self._rotate(worker_id, client, notify)
                     tracker.reset()

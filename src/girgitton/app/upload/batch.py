@@ -26,25 +26,27 @@ logger = logging.getLogger(__name__)
 
 NotifyFn = Callable[[str], Awaitable[None]]
 
+_UPLOAD_PART_SIZE_KB = 512  # Telethon default 64 KB → 512 KB (8x kam round-trip)
+
 
 async def upload_files_once(
     client: object,
     files: tuple[Path, ...],
     *,
     parallelism: int = UPLOAD_PARALLELISM_PER_BATCH,
+    part_size_kb: int = _UPLOAD_PART_SIZE_KB,
 ) -> list[object]:
     """Fayllarni Telegramga PARALLEL yuklaydi va InputFile ro'yxatini qaytaradi.
 
-    `parallelism` ta fayl bir vaqtda yuklanadi (asyncio.Semaphore). Bu sequential
-    upload'dan **3-5× tezroq** ishlaydi. Tartib saqlanadi (gather natijasi).
-
-    Telethon'da `client.upload_file()` async metod — InputFile yoki InputFileBig
-    qaytaradi. Bu obyekt bir necha marta `send_file` da ishlatilishi mumkin.
+    Optimizatsiyalar:
+    - `parallelism` ta fayl bir vaqtda (`asyncio.Semaphore`) — sequential upload'dan
+      3-5× tezroq.
+    - `part_size_kb=512` — Telethon default 64 KB → 512 KB. Har fayl uchun 8× kam
+      HTTP round-trip — katta fayllarda eng sezilarli yutuq.
     """
     if not files:
         return []
 
-    # Pre-validate (parallel mavjudlik tekshirish bilan vaqt yo'qotmaslik uchun)
     for path in files:
         if not path.exists():
             raise UploadError(f"Fayl topilmadi: {path}")
@@ -53,7 +55,10 @@ async def upload_files_once(
 
     async def _upload_one(path: Path) -> object:
         async with sem:
-            return await client.upload_file(str(path))  # type: ignore[attr-defined]
+            return await client.upload_file(  # type: ignore[attr-defined]
+                str(path),
+                part_size_kb=part_size_kb,
+            )
 
     return list(await asyncio.gather(*(_upload_one(p) for p in files)))
 

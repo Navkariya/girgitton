@@ -41,7 +41,14 @@ ProgressFn = Callable[[int, int, int, float], None]
 def _default_client_factory(
     settings: Settings, session_dir: Path
 ) -> Callable[[int], TelegramClient]:
-    """Har worker uchun alohida sessiya bilan TelegramClient yaratuvchi."""
+    """Har worker uchun alohida sessiya bilan robust TelegramClient yaratuvchi.
+
+    Optimizatsiyalar (uzun yuklash uchun barqarorlik):
+    - `flood_sleep_threshold=120` — 120s gacha FloodWait Telethon o'zi avtomatik kutadi
+    - `request_retries=10`, `connection_retries=10` — tarmoq glitch'larida avto-retry
+    - `retry_delay=2` — retry'lar orasi 2s
+    - `auto_reconnect=True` — uzilishlardan keyin avto-tikla
+    """
     from telethon import TelegramClient as _TC
 
     session_dir.mkdir(parents=True, exist_ok=True)
@@ -51,6 +58,11 @@ def _default_client_factory(
             str(session_dir / f"worker_{idx}"),
             api_id=settings.api_id,
             api_hash=settings.api_hash.get(),
+            flood_sleep_threshold=120,
+            request_retries=10,
+            connection_retries=10,
+            retry_delay=2,
+            auto_reconnect=True,
         )
 
     return factory

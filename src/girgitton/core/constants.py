@@ -29,8 +29,8 @@ ROTATE_AFTER_SECONDS: Final[int] = 300
 SPEED_DROP_THRESHOLD_MB_S: Final[float] = 0.5
 # Oxirgi BITTA batch tezligi shu ostida bo'lsa darhol rotate (v1/v2 ga o'xshash)
 LAST_BATCH_SPEED_THRESHOLD_MB_S: Final[float] = 0.9
-# Throttle (FloodWait simulyatsiyasi) — uzoq kutish
-THROTTLE_SPEED_LIMIT_MB_S: Final[float] = 0.1
+# Throttle (FATAL sekin tarmoq) — faqat haqiqatdan dead bo'lganda 30 daq kut
+THROTTLE_SPEED_LIMIT_MB_S: Final[float] = 0.02
 THROTTLE_WAIT_SECONDS: Final[int] = 1800  # 30 daqiqa
 
 # ─── Pair code ───────────────────────────────────────────────────────────────
