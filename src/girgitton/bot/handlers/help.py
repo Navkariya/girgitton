@@ -25,13 +25,17 @@ def register_help(client: TelegramClient) -> None:
         base = f"https://github.com/{github_repo}/releases/latest/download"
         await event.reply(
             "💻 **Girgitton Desktop App** — yuklab olish\n\n"
-            f"🪟 [Windows (.exe)]({base}/Girgitton_Windows.exe)\n"
-            f"🍎 [macOS (.zip)]({base}/Girgitton_macOS.zip)\n"
-            f"🐧 [Linux (.bin)]({base}/Girgitton_Linux.bin)\n\n"
+            "🪟 **Windows** (tavsiya):\n"
+            f"   [Girgitton_Windows_Setup.exe]({base}/Girgitton_Windows_Setup.exe) "
+            "— installer + Desktop yarlik + Uninstaller\n\n"
+            "🪟 Windows (portable, bir fayl):\n"
+            f"   [Girgitton_Windows.exe]({base}/Girgitton_Windows.exe)\n\n"
+            f"🍎 [macOS]({base}/Girgitton_macOS.zip)\n"
+            f"🐧 [Linux]({base}/Girgitton_Linux.bin)\n\n"
             "**Ishlatish:**\n"
             "1. Operatsion tizimingizga mos faylni yuklang\n"
-            "2. Faylni ochib App ni ishga tushiring\n"
-            "3. Avtomatik Telegram orqali ulanish so'raydi\n"
-            "4. Guruhlarda `/here` yuborib, papkalarni tanlang",
+            "2. Windows: `Setup.exe` ni bosib o'rnating → Desktop'da yarlik paydo bo'ladi\n"
+            "3. App ochilganda Telegram orqali avtomatik ulanish so'raydi\n"
+            "4. Guruhlarda `/here` yuborib papkalarni tanlang",
             parse_mode="md",
         )

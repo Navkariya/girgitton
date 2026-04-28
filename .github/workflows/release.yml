@@ -47,7 +47,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y python3-tk libxcb-xinerama0
 
-      - name: Build with PyInstaller
+      # ─── Portable build (.exe / .app / .bin) ───────────────────────────
+      - name: Build portable (PyInstaller --onefile)
+        env:
+          BUILD_MODE: onefile
         run: pyinstaller scripts/package.spec --clean --noconfirm
 
       - name: Package macOS as zip
@@ -56,11 +59,10 @@ jobs:
           cd dist
           zip -r Girgitton_macOS.zip Girgitton.app
 
-      - name: Rename Windows artifact
+      - name: Rename Windows portable
         if: matrix.os == 'windows-latest'
         shell: pwsh
-        run: |
-          Move-Item -Path "dist/Girgitton.exe" -Destination "dist/Girgitton_Windows.exe" -Force
+        run: Move-Item -Path "dist/Girgitton.exe" -Destination "dist/Girgitton_Windows.exe" -Force
 
       - name: Rename Linux artifact
         if: matrix.os == 'ubuntu-latest'
@@ -68,15 +70,66 @@ jobs:
           mv dist/Girgitton dist/Girgitton_Linux.bin
           chmod +x dist/Girgitton_Linux.bin
 
-      - name: SHA256 checksum
+      # ─── Windows installer (Inno Setup --onedir) ───────────────────────
+      - name: Build onedir (for installer)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          BUILD_MODE: onedir
+        run: |
+          # avval onefile output saqlaymiz
+          New-Item -ItemType Directory -Force -Path "_portable_keep"
+          Move-Item "dist/Girgitton_Windows.exe" "_portable_keep/Girgitton_Windows.exe"
+          Remove-Item -Recurse -Force dist, build -ErrorAction SilentlyContinue
+          pyinstaller scripts/package.spec --clean --noconfirm
+
+      - name: Install Inno Setup
+        if: matrix.os == 'windows-latest'
+        run: choco install innosetup --no-progress --confirm
+
+      - name: Compile Inno Setup installer
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          if (-not $version) { $version = "3.2.4" }
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=$version installer\girgitton.iss
+
+      - name: Restore portable + collect artifacts
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "release_artifacts"
+          Move-Item "_portable_keep/Girgitton_Windows.exe" "release_artifacts/Girgitton_Windows.exe"
+          Move-Item "installer/Output/Girgitton_Windows_Setup.exe" "release_artifacts/Girgitton_Windows_Setup.exe"
+
+      - name: SHA256 checksum (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          cd release_artifacts
+          (Get-FileHash Girgitton_Windows.exe -Algorithm SHA256).Hash | Out-File Girgitton_Windows.exe.sha256
+          (Get-FileHash Girgitton_Windows_Setup.exe -Algorithm SHA256).Hash | Out-File Girgitton_Windows_Setup.exe.sha256
+
+      - name: SHA256 checksum (mac/linux)
+        if: matrix.os != 'windows-latest'
         shell: bash
         run: |
           cd dist
-          if [ -f Girgitton_Windows.exe ]; then sha256sum Girgitton_Windows.exe > Girgitton_Windows.exe.sha256; fi
           if [ -f Girgitton_macOS.zip ]; then shasum -a 256 Girgitton_macOS.zip > Girgitton_macOS.zip.sha256; fi
           if [ -f Girgitton_Linux.bin ]; then sha256sum Girgitton_Linux.bin > Girgitton_Linux.bin.sha256; fi
 
-      - name: Upload artifact
+      - name: Upload artifact (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: girgitton-${{ matrix.os }}
+          path: |
+            release_artifacts/*.exe
+            release_artifacts/*.sha256
+
+      - name: Upload artifact (mac/linux)
+        if: matrix.os != 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: girgitton-${{ matrix.os }}
@@ -106,6 +159,8 @@ jobs:
           files: |
             artifacts/girgitton-windows-latest/Girgitton_Windows.exe
             artifacts/girgitton-windows-latest/Girgitton_Windows.exe.sha256
+            artifacts/girgitton-windows-latest/Girgitton_Windows_Setup.exe
+            artifacts/girgitton-windows-latest/Girgitton_Windows_Setup.exe.sha256
             artifacts/girgitton-macos-latest/Girgitton_macOS.zip
             artifacts/girgitton-macos-latest/Girgitton_macOS.zip.sha256
             artifacts/girgitton-ubuntu-latest/Girgitton_Linux.bin

@@ -16,10 +16,15 @@ import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from girgitton.core import app_paths
+
 logger = logging.getLogger(__name__)
 
-_PROGRESS_PATH = Path.home() / ".girgitton" / "progress.json"
 _LOCK = threading.Lock()
+
+
+def _progress_path() -> Path:
+    return app_paths.get_progress_path()
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,10 +87,10 @@ def _atomic_write(path: Path, data: dict[str, object]) -> None:
 
 
 def _read() -> dict[str, GroupProgress]:
-    if not _PROGRESS_PATH.exists():
+    if not _progress_path().exists():
         return {}
     try:
-        raw = json.loads(_PROGRESS_PATH.read_text(encoding="utf-8"))
+        raw = json.loads(_progress_path().read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         logger.warning("progress.json buzilgan: %s", exc)
         return {}
@@ -109,7 +114,7 @@ def save_progress(progress: GroupProgress) -> None:
     with _LOCK:
         existing = _read()
         existing[str(progress.group_id)] = progress
-        _atomic_write(_PROGRESS_PATH, {k: v.to_dict() for k, v in existing.items()})
+        _atomic_write(_progress_path(), {k: v.to_dict() for k, v in existing.items()})
 
 
 def clear_group(group_id: int) -> None:
@@ -118,7 +123,7 @@ def clear_group(group_id: int) -> None:
         if str(group_id) in existing:
             del existing[str(group_id)]
             if existing:
-                _atomic_write(_PROGRESS_PATH, {k: v.to_dict() for k, v in existing.items()})
+                _atomic_write(_progress_path(), {k: v.to_dict() for k, v in existing.items()})
             else:
                 _delete_file()
 
@@ -129,9 +134,9 @@ def clear_all() -> None:
 
 
 def _delete_file() -> None:
-    if _PROGRESS_PATH.exists():
+    if _progress_path().exists():
         try:
-            _PROGRESS_PATH.unlink()
+            _progress_path().unlink()
         except OSError as exc:
             logger.warning("progress.json o'chirib bo'lmadi: %s", exc)
 

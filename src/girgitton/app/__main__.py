@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from pathlib import Path
 
 from girgitton.core.logging_setup import setup_logging
 
@@ -22,10 +21,12 @@ def _start_async_loop(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def main() -> None:
+    from girgitton.core import app_paths
+
     setup_logging(
         level="INFO",
         json=False,
-        log_dir=Path.home() / ".girgitton",
+        log_dir=app_paths.get_logs_dir(),
         file_name="desktop_app.log",
     )
 

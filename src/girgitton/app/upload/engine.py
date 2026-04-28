@@ -66,8 +66,10 @@ class UploadEngine:
         session_dir: Path | None = None,
         client_factory: Callable[[int], TelegramClient] | None = None,
     ) -> None:
+        from girgitton.core import app_paths
+
         self._settings = settings
-        self._session_dir = session_dir or Path.home() / ".girgitton" / "sessions"
+        self._session_dir = session_dir or app_paths.get_sessions_dir()
         self._client_factory = (
             client_factory
             if client_factory is not None

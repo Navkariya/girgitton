@@ -15,8 +15,10 @@ if TYPE_CHECKING:
 
 @pytest.fixture(autouse=True)
 def isolated_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Progress fayl yo'lini tmp ga yo'naltiradi."""
-    monkeypatch.setattr(progress_store, "_PROGRESS_PATH", tmp_path / "progress.json")
+    """Progress fayl yo'lini tmp ga yo'naltiradi (app_paths orqali)."""
+    from girgitton.core import app_paths
+
+    monkeypatch.setattr(app_paths, "_cached_data_dir", tmp_path)
     return tmp_path
 
 

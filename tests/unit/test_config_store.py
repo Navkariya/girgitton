@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def isolated_store(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Test sandbox: ~/.girgitton ni tmp_path bilan almashtiradi va keyringni o'chiradi."""
-    monkeypatch.setattr(config_store, "_CONFIG_DIR", tmp_path)
-    monkeypatch.setattr(config_store, "_CONFIG_PATH", tmp_path / "credentials.enc")
-    monkeypatch.setattr(config_store, "_KEY_PATH", tmp_path / "credentials.key")
+    """Test sandbox: data dir ni tmp_path bilan almashtiradi va keyringni o'chiradi."""
+    from girgitton.core import app_paths
+
+    monkeypatch.setattr(app_paths, "_cached_data_dir", tmp_path)
 
     # Keyringni har doim xato qaytaruvchi qilamiz → fayl fallback ishlaydi
     import sys

@@ -16,7 +16,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_JSON_PATH = Path.home() / ".girgitton" / "state.json"
+
+def _default_json_path() -> Path:
+    from girgitton.core import app_paths
+
+    return app_paths.get_state_path()
 
 
 async def build_storage(
@@ -30,7 +34,7 @@ async def build_storage(
     Redis bo'lsa va init muvaffaqiyatli bo'lsa Redis. Aks holda (yoki
     `allow_fallback=False` bo'lganida xato) JSON.
     """
-    target_path = json_path or _DEFAULT_JSON_PATH
+    target_path = json_path or _default_json_path()
 
     if settings.redis_url:
         store: StorageRepository = RedisStorage(settings.redis_url)

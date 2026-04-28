@@ -11,7 +11,6 @@ import logging
 import signal
 import sys
 from contextlib import suppress
-from pathlib import Path
 
 from girgitton.bot.api.server import build_app, start_http_server
 from girgitton.bot.client import build_bot_client, start_bot_client
@@ -32,10 +31,12 @@ async def _run() -> None:
     settings = Settings.load()
     settings.validate()
 
+    from girgitton.core import app_paths
+
     setup_logging(
         level=settings.log_level,
         json=settings.log_json,
-        log_dir=Path.home() / ".girgitton",
+        log_dir=app_paths.get_logs_dir(),
     )
     logger.info("Bot ishga tushmoqda: %s", settings.to_safe_dict())
 
