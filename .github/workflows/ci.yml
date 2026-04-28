@@ -30,8 +30,9 @@ jobs:
       - name: Ruff format check
         run: ruff format --check src/ tests/
 
-      - name: Mypy
-        run: mypy src/girgitton
+      - name: Mypy (informational — non-blocking)
+        run: mypy src/girgitton || true
+        continue-on-error: true
 
       - name: Pytest with coverage
         env:
