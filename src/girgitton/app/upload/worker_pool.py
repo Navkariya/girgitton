@@ -125,6 +125,8 @@ class GlobalWorkerPool:
         flood_retry = FloodWaitRetry(max_retries=3)
         batches_done = 0
         rotation_started = now_monotonic()
+        last_rotate_at = 0.0  # cooldown — per-batch rotate'ni cheklash
+        ROTATE_COOLDOWN_SECONDS = 30.0
 
         while True:
             item = await self._queue.get()
@@ -178,17 +180,23 @@ class GlobalWorkerPool:
                 tracker.reset()
                 rotation_started = now_monotonic()
             else:
-                # ─── Sessiya rotatsiyasi (4 mezon, last_speed ham qatnashadi)
-                elapsed = now_monotonic() - rotation_started
-                if self._config.policy.should_rotate(
+                # ─── Sessiya rotatsiyasi (4 mezon + cooldown)
+                # Cooldown: oxirgi rotate'dan 30s o'tmasa qayta rotate qilmaymiz.
+                # Bu past tezlik bilan har batchda reconnect qilishni oldini oladi.
+                now = now_monotonic()
+                elapsed = now - rotation_started
+                cooldown_elapsed = (now - last_rotate_at) >= ROTATE_COOLDOWN_SECONDS
+                should = self._config.policy.should_rotate(
                     batches_done=batches_done,
                     time_elapsed=elapsed,
                     tracker=tracker,
                     last_speed=speed,
-                ):
+                )
+                if should and cooldown_elapsed:
                     await self._rotate(worker_id, client, notify)
                     tracker.reset()
                     rotation_started = now_monotonic()
+                    last_rotate_at = now_monotonic()
 
             if not item.future.done():
                 item.future.set_result(ok)
@@ -203,6 +211,6 @@ class GlobalWorkerPool:
         await notify(f"🔄 W{worker_id} sessiya yangilanmoqda")
         with suppress(Exception):
             await client.disconnect()  # type: ignore[attr-defined]
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.5)  # 2s -> 0.5s (4x tezroq rotate)
         with suppress(Exception):
             await client.start(bot_token=self._config.bot_token)  # type: ignore[attr-defined]

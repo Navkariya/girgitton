@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -190,17 +189,26 @@ class UploadEngine:
             f"▶️ Boshlandi: {self._settings.upload_workers} worker, {total_batches_all} batch jami"
         )
 
-        # ─── Round-robin submit ───────────────────────────────────────────
-        queues = {gid: deque(batches) for gid, batches in per_group_batches.items()}
+        # ─── Eager submit: BARCHA batchlarni queue'ga (round-robin interleaved)
+        # Bu workerlar starvation'dan qutqaradi — 5 worker = 5x parallelism.
+        # Avval esa har vaqtda faqat 1 ta batch queue'da bo'lardi (effektiv 1x).
         future_to_meta: dict[asyncio.Future[bool], tuple[int, int, int]] = {}
         done_per_group = {gid: per_group_skipped.get(gid, 0) for gid in per_group_batches}
 
-        # Initial: har guruhdan bittadan
-        for gid in per_group_batches:
-            if queues[gid]:
-                first = queues[gid].popleft()
-                fut = pool.submit(first, gid, per_group_total[gid])
-                future_to_meta[fut] = (gid, first.idx, per_group_total[gid])
+        # Round-robin interleave (multi-group fairness uchun):
+        # G1[0], G2[0], G3[0], G1[1], G2[1], ...
+        max_len = max(len(b) for b in per_group_batches.values())
+        for i in range(max_len):
+            for gid, batches in per_group_batches.items():
+                if i < len(batches):
+                    batch = batches[i]
+                    fut = pool.submit(batch, gid, per_group_total[gid])
+                    future_to_meta[fut] = (gid, batch.idx, per_group_total[gid])
+
+        await notify(
+            f"📤 {len(future_to_meta)} batch queue'ga joylandi — "
+            f"{self._settings.upload_workers} worker parallel ishlamoqda"
+        )
 
         while future_to_meta and not self._stop_requested:
             done, _ = await asyncio.wait(future_to_meta.keys(), return_when=asyncio.FIRST_COMPLETED)
@@ -213,7 +221,6 @@ class UploadEngine:
                 if ok:
                     done_per_group[gid] += 1
                     on_progress(gid, done_per_group[gid], total, 0.0)
-                    # ─── Checkpoint: har batch tugagach saqlash ─────────────
                     folder_str = str(group_folders.get(gid, ""))
                     progress_store.save_progress(
                         progress_store.GroupProgress(
@@ -224,10 +231,6 @@ class UploadEngine:
                             total_batches=total,
                         )
                     )
-                if not self._stop_requested and queues[gid]:
-                    nxt = queues[gid].popleft()
-                    new_fut = pool.submit(nxt, gid, per_group_total[gid])
-                    future_to_meta[new_fut] = (gid, nxt.idx, per_group_total[gid])
 
         await pool.stop()
         self._pool = None
