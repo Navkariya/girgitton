@@ -125,16 +125,16 @@ class App(ctk.CTk):
     def _bootstrap(self) -> None:
         cfg = config_store.load()
         if cfg and cfg.get("bot_token") and cfg.get("user_id"):
-            # Saqlangan API URL'dan foydalanamiz (Railway domeni saqlangan)
             saved_url = cfg.get("api_url")
             if saved_url:
                 self.server_url = saved_url
             self.show_main()
         else:
-            # Cred yo'q — server URL'ni avval so'raymiz
-            saved_cfg = cfg or {}
-            saved_url = saved_cfg.get("api_url") or self.server_url
-            self._ask_server_url(default_url=saved_url)
+            # Cred yo'q — default Railway URL bilan to'g'ridan-to'g'ri connect oqimiga
+            saved_url = (cfg or {}).get("api_url")
+            if saved_url:
+                self.server_url = saved_url
+            self._start_connect_flow()
 
     def _ask_server_url(self, *, default_url: str = "") -> None:
         """Server URL kiritish dialogini ko'rsatadi (Railway URL kiritish uchun)."""
