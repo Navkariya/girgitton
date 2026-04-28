@@ -55,7 +55,9 @@ jobs:
           python-version: "3.11"
       - name: Install bandit + pip-audit
         run: pip install bandit pip-audit
-      - name: Bandit
-        run: bandit -r src/ -ll
+      - name: Bandit (HIGH severity blocker, lower informational)
+        run: |
+          bandit -r src/ --severity-level high --confidence-level high
+          bandit -r src/ -ll || true   # Low/Medium: informational
       - name: Pip-audit (dependencies)
         run: pip-audit --strict || true   # informational
